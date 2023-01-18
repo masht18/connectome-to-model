@@ -16,7 +16,7 @@ from torch import optim
 import torch.nn.functional as F
 import torchvision.transforms as T
 from utils.datagen import *
-from graph import Graph
+from model.graph import Graph
 from model.topdown_gru import ConvGRUExplicitTopDown
 
 def str2bool(v):
@@ -30,7 +30,7 @@ def str2bool(v):
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--cuda', type = bool, default = True, help = 'use gpu or not')
-parser.add_argument('--epochs', type = int, default = 50)
+parser.add_argument('--epochs', type = int, default = 10)
 parser.add_argument('--layers', type = int, default = 1)
 parser.add_argument('--topdown_c', type = int, default = 10)
 parser.add_argument('--topdown_h', type = int, default = 10)
@@ -45,8 +45,7 @@ parser.add_argument('--model_save', type = str, default = 'saved_models/audio_ne
 parser.add_argument('--results_save', type = str, default = 'results/no_topdown_newdata.npy')
 
 args = vars(parser.parse_args())
-if args['topdown_type'] != 'text' and args['topdown_type'] != 'image' and args['topdown_type'] != 'audio':
-    raise ValueError('Topdown style not implemented')
+
 
 # %%
 # Use GPU if available
@@ -74,10 +73,11 @@ test_loader = DataLoader(test_data, batch_size=32, shuffle=True)
 connection_strengths = [1, 1, 1, 1] 
 criterion = nn.CrossEntropyLoss()
 connections = [[0,1,1,0],[0,0,1,1],[0,0,0,1], [0,0,0,0]] #V1 V2 V4 IT
-input_node = 0 # V1
+connection_strengths = [[1,1,1,1],[1,1,1,1],[1,1,1,1], [1,1,1,1]]
+input_node = [0,3] # V1
 output_node = 3 #IT
-graph = Graph(connections = connections, connection_strengths = connection_strengths, input_node = input_node, output_node = output_node)
-model = graph.build_architecture()
+graph = Graph(connections = connections, conn_strength = connection_strengths, input_node_indices = input_node, output_node_index = output_node, signal_length = 3, dtype = torch.cuda.FloatTensor)
+model = graph.build_architecture().cuda().float()
 # model = ConvGRUExplicitTopDown((28, 28), 10, input_dim=1, 
 #                                hidden_dim=10, 
 #                                kernel_size=(3,3),
@@ -116,12 +116,16 @@ def test_sequence(dataloader, clean_data, dataset_ref):
             imgs, label = imgs.to(device), label.to(device)
                 
             # Generate a sequence that adds up to loaded image    
-            input_seqs = sequence_gen(imgs, label, clean_data, dataset_ref, seq_style='addition')
-                
+            input_seqs = sequence_gen(imgs, label, clean_data, dataset_ref, seq_style='addition').float()
+            
             # Generate random topdown
-            topdown = torch.rand(imgs.shape[0], args['topdown_c'], args['topdown_h'], args['topdown_w'])
+            topdown = torch.rand(imgs.shape[0], input_seqs.shape[1], args['topdown_c'], args['topdown_h'], args['topdown_w']).to(device)
+            input_list = []
+            input_list.append(input_seqs)
+            input_list.append(topdown)
 
-            output = model(input_seqs.float(), topdown)
+
+            output = model(input_list)
 
             _, predicted = torch.max(output.data, 1)
             total += label.size(0)
@@ -136,18 +140,23 @@ def train_sequence():
     running_loss = 0.0
         
     for i, data in enumerate(train_loader, 0):
-            
+        if (i % 10 == 0):
+            print (i)
         optimizer.zero_grad()
             
         imgs, label = data
         imgs, label = imgs.to(device), label.to(device)
 
-        input_seqs = sequence_gen(imgs, label, train_data, mnist_ref_train, seq_style='addition')
+        input_seqs = sequence_gen(imgs, label, train_data, mnist_ref_train, seq_style='addition').float()
 
         # Generate random topdown for testing purposes only
-        topdown = torch.rand(imgs.shape[0], args['topdown_c'], args['topdown_h'], args['topdown_w'])
-            
-        output = model(input_seqs.float(), topdown)
+        topdown = torch.rand(imgs.shape[0], input_seqs.shape[1], args['topdown_c'], args['topdown_h'], args['topdown_w']).to(device)
+        
+        input_list = []
+        input_list.append(input_seqs)
+        input_list.append(topdown)
+        
+        output = model(input_list)
             
         loss = criterion(output, label)
         running_loss += loss.item()

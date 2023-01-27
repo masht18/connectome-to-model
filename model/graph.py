@@ -146,28 +146,28 @@ class Architecture(nn.Module):
         #TODO: line #147 assumes same size&dimension across nodes AND assumes topdown input signal size of 10*10 and dimension of 10 -> 10*10*10
         self.topdown_input_proj = nn.Linear(10*10*10, self.graph.nodes[0].hidden_dim*self.graph.nodes[0].input_height *self.graph.nodes[0].input_height)
         
-        linear_proj_list = []
-        for t in range(self.time):
-            n_proj_list = []
-            for node in range(self.graph.num_node):
-                num_bottomup_input_cells = len(self.graph.find_feedforward_cells(node, t))
-                if (node in self.graph.input_node_indices and t < self.graph.signal_length):
-                    num_bottomup_input_cells = num_bottomup_input_cells + 1
-                lin_proj = nn.Linear((self.graph.nodes[node].hidden_dim*num_bottomup_input_cells)*self.graph.nodes[node].input_height*self.graph.nodes[node].input_width, self.graph.nodes[node].input_dim*self.graph.nodes[node].input_height*self.graph.nodes[node].input_width)
-                n_proj_list.append(lin_proj)
-            time_lin_proj = nn.ModuleList(n_proj_list)
-            linear_proj_list.append(time_lin_proj)
-        self.linear_proj_list = nn.ModuleList(linear_proj_list)
+        bottomup_gru_list = []
+        
+        for node in range(self.graph.num_node):
+            proj = nn.Linear((self.graph.nodes[node].hidden_dim*self.graph.num_node)*self.graph.nodes[node].input_height*self.graph.nodes[node].input_width, self.graph.nodes[node].input_dim*self.graph.nodes[node].input_height*self.graph.nodes[node].input_width)
+            bottomup_gru_list.append(proj)
+        self.bottomup_gru_list = nn.ModuleList(bottomup_gru_list)
+        
+        
+        #to avoid the effort of a double loop, we find out the node that receives the most modulatory input at spme timestep t across all timesteps.
+        topdown_gru_proj = []
+        #max_mod_num_list = [] #a list of length n (number of nodes)
+        #for node in range(self.graph.num_node):
+            #max_mod_num = 0
+            #for t in range(self.time):
+                #if (max_mod_num < len(self.graph.find_feedback_cells(node, t))):
+                   # max_mod_num = len(self.graph.find_feedback_cells(node, t))
+          #  max_mod_num_list.append()
         
         topdown_gru_proj = []
-        for t in range(self.time):
-            node_proj_list = []
-            for node in range(self.graph.num_node):
-                mod_cells = self.graph.find_feedback_cells(node, t)
-                proj = nn.Linear((self.graph.nodes[node].hidden_dim * len(mod_cells))*self.graph.nodes[node].input_height*self.graph.nodes[node].input_width, (self.graph.nodes[node].hidden_dim + self.graph.nodes[node].input_dim)*self.graph.nodes[node].input_height*self.graph.nodes[node].input_width)
-                node_proj_list.append(proj)
-            time_proj = nn.ModuleList(node_proj_list)
-            topdown_gru_proj.append(time_proj)
+        for node in range(self.graph.num_node):
+            proj = nn.Linear((self.graph.nodes[node].hidden_dim * self.graph.num_node)*self.graph.nodes[node].input_height*self.graph.nodes[node].input_width, (self.graph.nodes[node].hidden_dim + self.graph.nodes[node].input_dim)*self.graph.nodes[node].input_height*self.graph.nodes[node].input_width)
+            topdown_gru_proj.append(proj)
         self.topdown_gru_proj = nn.ModuleList(topdown_gru_proj)
             
                 
@@ -217,7 +217,7 @@ class Architecture(nn.Module):
                 #current_input = self.input_conv(input_tensor[:, :, :, :])#[32,1,28,28]
 
                 for node in range(self.graph.num_node):
-                    #print('currently:',rep,' ',t,' ',node)
+                    #print('currently:','rep: ',rep,' t ',t,' node ',node)
                     bottomup_has_info = False
                     # Current state
                     node_hidden_state = hidden_state_prev[node] 
@@ -242,7 +242,11 @@ class Architecture(nn.Module):
                             else: 
                                 bottomup = self.graph.conn_strength[i][node]*hidden_state_prev[i]
                                 bottomup_has_info = True
-                       
+                      
+                    if (bottomup.shape[1] < self.graph.nodes[node].hidden_dim*self.graph.num_node ):
+                        pad_rows = self.graph.nodes[node].hidden_dim*self.graph.num_node - bottomup.shape[1]
+                        pad = torch.zeros((bottomup.shape[0], pad_rows, bottomup.shape[2], bottomup.shape[3]),device=torch.device('cuda'))
+                        bottomup = torch.cat([bottomup,pad], dim = 1)
                     
 
                     #now we handle ->modulartory<- signal •⌄•
@@ -250,19 +254,24 @@ class Architecture(nn.Module):
                     
                     #if there is no bottomup input, then ignore topdown feedback
                     if (bottomup_has_info == False or len(mod_cells) == 0): 
-                        mod_sig = torch.zeros(hidden_state_prev[i].shape[0], self.graph.nodes[node].input_dim+node_hidden_state.shape[1], self.graph.nodes[node].input_height, self.graph.nodes[node].input_width).to('cuda')
+                        mod_sig = torch.zeros((hidden_state_prev[i].shape[0], self.graph.nodes[node].input_dim+node_hidden_state.shape[1], self.graph.nodes[node].input_height, self.graph.nodes[node].input_width)).to('cuda')
  
                     #modulartory signal present 
                     else: 
                         is_first = True #boolean to judge if is first pass
-                        for i in (mod_cells):
+                        for i in range(self.graph.num_node):
+                            if i in mod_cells: #then save the actual modulatory information
+                                signal = self.graph.conn_strength[i][node]*hidden_state_prev[i]
+                            else: #if the i th node has no modulartory signal for the current node, then pass along an array of zeros with shape
+                                signal = torch.zeros((hidden_state_prev[i].shape)).to('cuda')
+                            
                             if is_first:
-                                mod_sig = self.graph.conn_strength[i][node]*hidden_state_prev[i]
+                                mod_sig = signal
                             else:
-                                mod_sig = torch.cat([mod_sig, self.graph.conn_strength[i][node]*hidden_state_prev[i]], dim=1) 
+                                mod_sig = torch.cat([mod_sig, signal], dim=1) 
                             is_first = False
                         
-                        mod_sig = self.topdown_gru_proj[t][node](torch.flatten(mod_sig,start_dim=1))
+                        mod_sig = self.topdown_gru_proj[node](torch.flatten(mod_sig,start_dim=1))
                         mod_sig = torch.reshape(mod_sig, (mod_sig.shape[0], self.graph.nodes[node].input_dim+node_hidden_state.shape[1], self.graph.nodes[node].input_height, self.graph.nodes[node].input_width))
 
                     #now we are done with gathering bottomup and modulatory inputs for current cell
@@ -271,10 +280,11 @@ class Architecture(nn.Module):
                     if (bottomup_has_info == False):
                         bottomup = torch.zeros(hidden_state_prev[i].shape[0], 1, self.graph.nodes[node].input_height, self.graph.nodes[node].input_width).to('cuda')
                     else:
-                        bottomup = self.linear_proj_list[t][node](torch.flatten(bottomup,start_dim=1)) 
+                        bottomup = self.bottomup_gru_list[node](torch.flatten(bottomup,start_dim=1)) 
                         bottomup = torch.reshape(bottomup, (bottomup.shape[0],self.graph.nodes[node].input_dim, self.graph.nodes[node].input_height, self.graph.nodes[node].input_width))
                     
                     h = self.cell_list[node](input_tensor=bottomup, h_cur=node_hidden_state, topdown=mod_sig)
+
 
                     hidden_state_cur[node] = h
                 #we are done with iterating through all cells at the current timestep

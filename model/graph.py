@@ -10,7 +10,7 @@ class Node:
         self.out_nodes_indices = [] #nodes being passed with values from current node #contains Node index (int)
         self.in_strength = [] #connection strengths of in_nodes
         self.out_strength = [] #connection strength of out_nodes
-        self.rank_list = [] #default value
+        self.rank_list = [-1] #default value. if the Node end up with only -1 as its rank_list element, then 
 
 
         #cell params
@@ -31,13 +31,13 @@ class Graph(object):
         self.input_node_params = input_node_params #a list of length len(input_node_indices), each consist of a list of 3: c,h,w 
         self.conn = connections #adjacency matrix
         self.conn_strength = conn_strength
-        self.signal_length = signal_length
+        self.signal_length = signal_length #the time length of signal input #TODO: change it into a list to accomodate different input time length
         self.directed = directed #flag for whether the connections are directed 
         self.num_node = len(self.conn)
         self.max_rank = -1
         self.num_edge = 0 #assuming directed edge. Will need to change if graph is undirected
         self.topdown = topdown
-        self.nodes = self.generate_node_list(conn_strength)
+        self.nodes = self.generate_node_list(conn_strength) #a list of Node object
         self.dtype = dtype 
         self.bias = bias
         self.output_size = output_size
@@ -45,7 +45,7 @@ class Graph(object):
         #self.nodes[output_node].dist = 0
         #self.max_length = self.find_longest_path_length()
         for input_node in self.input_node_indices:
-            self.rank_node(self.nodes[input_node],self.nodes[output_node_index], 0, 0)
+            self.rank_node(self.nodes[input_node],self.nodes[self.output_node_index], 0, 0)
 
         # for node in range (self.num_node):
             
@@ -210,10 +210,10 @@ class Architecture(nn.Module):
                 #before permute: b c t h w
                 #TODO: error checks if input signal time series is longer than self.time
                 current_inputs = [] #same shape and order as self.graph.input_node_indices # shape [n,b,c,h,w]
-                for input in range(num_inputs):
+                for inp in range(num_inputs):
                     if (t < self.graph.signal_length):
                     #current_inputs.append(self.input_conv_list[input](input_tensor_list[input][:, t, :, :, :]))
-                        current_inputs.append(self.input_conv_list[input](input_tensor_list[input][:, t, :, :, :]))
+                        current_inputs.append(self.input_conv_list[inp](input_tensor_list[inp][:, t, :, :, :]))
                 #current_input = self.input_conv(input_tensor[:, :, :, :])#[32,1,28,28]
 
                 for node in range(self.graph.num_node):

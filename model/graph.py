@@ -33,7 +33,7 @@ class Graph(object):
     """
     def __init__(self, connections, conn_strength, 
                  input_node_indices, output_node_index, 
-                 input_node_params = [(1, 28, 28), (10, 28, 28), (10, 28, 28), (10, 28, 28)], 
+                 input_node_params = [(1, 28, 28)], 
                  output_size = 10, 
                  directed=True, dtype = torch.cuda.FloatTensor, 
                  topdown = True, bias = False):
@@ -238,12 +238,10 @@ class Architecture(nn.Module):
                         topdown.append(hidden_states_prev[topdown_node].flatten(start_dim=1))
                         #print(topdown[0].shape)
                     
-                    topdown = torch.cat(topdown, dim=1)
-                    
-                    if torch.count_nonzero(topdown) == 0:
+                    if not topdown or torch.count_nonzero(torch.cat(topdown, dim=1)) == 0:
                         topdown = None
                     else:
-                        topdown = self.topdown_projections[node](topdown)
+                        topdown = self.topdown_projections[node](torch.cat(topdown, dim=1))
                         topdown = topdown.reshape(batch_size, self.graph.nodes[node].input_dim + self.graph.nodes[node].hidden_dim, h, w)
                     
                     #################################################

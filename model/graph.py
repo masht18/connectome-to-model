@@ -46,7 +46,7 @@ class Graph(object):
         self.max_rank = -1
         self.num_edge = 0 #assuming directed edge. Will need to change if graph is undirected
         self.topdown = topdown
-        self.nodes = self.generate_node_list(conn_strength) #a list of Node object
+        self.nodes = self.generate_node_list(connections) #a list of Node object
         self.dtype = dtype 
         self.bias = bias
         self.output_size = output_size
@@ -67,6 +67,7 @@ class Graph(object):
         for n in range(self.num_node):
             input_nodes = torch.nonzero(connections[:, n])
             output_nodes = torch.nonzero(connections[n, :])
+            
             node = Node(n, input_nodes, output_nodes)
             nodes.append(node)
             
@@ -104,7 +105,9 @@ class Graph(object):
 class Architecture(nn.Module):
     def __init__(self, graph, input_sizes, img_channel_dims, rep=1):
         '''
-        :param img_channel_dims (list of tuples)
+        :param graph (Grapph object)
+            object containing architecture graph
+        :param img_sizes (list of tuples)
             list of input sizes (height, width) per node. If a node doesn't receive an outside input, it's (0, 0)
         :param img_channel_dims (list of ints)
             list of input dimension sizes per node. If a node doesn't receive an outside input, it's 0
@@ -118,11 +121,10 @@ class Architecture(nn.Module):
         
         cell_list = []
         for node in range(graph.num_node):
-            cell_list.append(ConvGRUTopDownCell(input_size=((self.graph.nodes[node].input_height, self.graph.nodes[node].input_width)), 
-                                         input_dim=self.graph.nodes[node].input_dim, 
-                                         hidden_dim = self.graph.nodes[node].hidden_dim,
-                                         topdown_dim= self.graph.nodes[node].hidden_dim, #TODO: discuss with Mashbayar
-                                         kernel_size=self.graph.nodes[node].kernel_size,
+            cell_list.append(ConvGRUTopDownCell(input_size=((graph.nodes[node].input_size[0], graph.nodes[node].input_size[1])), 
+                                         input_dim=graph.nodes[node].input_dim, 
+                                         hidden_dim = graph.nodes[node].hidden_dim,
+                                         kernel_size=graph.nodes[node].kernel_size,
                                          bias=graph.bias,
                                          dtype=graph.dtype))
         self.cell_list = nn.ModuleList(cell_list)
@@ -150,41 +152,42 @@ class Architecture(nn.Module):
         
         for node in range(graph.num_node):
             # dimensions of ALL bottom-up inputs to current node
-            all_input_h = sum([graph.nodes[i].input_size[0] for i in self.graph.nodes[node].in_nodes_indices]) + input_sizes[node][0]
-            all_input_w = sum([graph.nodes[i].input_size[1] for i in self.graph.nodes[node].in_nodes_indices]) + input_sizes[node][1]
-            all_input_dim = sum([graph.nodes[i].input_dim for i in self.graph.nodes[node].in_nodes_indices]) + img_channel_dims[node]
+            all_input_h = sum([graph.nodes[i.item()].input_size[0] for i in self.graph.nodes[node].in_nodes_indices]) + input_sizes[node][0]
+            all_input_w = sum([graph.nodes[i.item()].input_size[1] for i in self.graph.nodes[node].in_nodes_indices]) + input_sizes[node][1]
+            all_input_dim = sum([graph.nodes[i.item()].input_dim for i in self.graph.nodes[node].in_nodes_indices]) + img_channel_dims[node]
             
             target_h, target_w = graph.nodes[node].input_size
             
-            proj = nn.Linear(all_input_dim*all_input_h*all_input_w, graph.nodes[node].hidden_dim*target_h*target_w)
+            proj = nn.Linear(all_input_dim*all_input_h*all_input_w, graph.nodes[node].input_dim*target_h*target_w)
             bottomup_projections.append(proj)
-        self.bottomup_gru_list = nn.ModuleList(bottomup_gru_list)
+        self.bottomup_projections = nn.ModuleList(bottomup_projections)
         
         
         # PROJECTIONS FOR TOPDOWN INTERLAYER CONNECTIONS
         topdown_gru_proj = []
         for node in range(self.graph.num_node):
             # dimensions of ALL top-down inputs to current node
-            all_input_h = sum([graph.nodes[i].input_size[0] for i in self.graph.nodes[node].out_nodes_indices])
-            all_input_w = sum([graph.nodes[i].input_size[1] for i in self.graph.nodes[node].out_nodes_indices])
-            all_input_dim = sum([graph.nodes[i].input_dim for i in self.graph.nodes[node].out_nodes_indices])
+            all_input_h = sum([graph.nodes[i.item()].input_size[0] for i in self.graph.nodes[node].out_nodes_indices])
+            all_input_w = sum([graph.nodes[i.item()].input_size[1] for i in self.graph.nodes[node].out_nodes_indices])
+            all_input_dim = sum([graph.nodes[i.item()].input_dim for i in self.graph.nodes[node].out_nodes_indices])
             
-            # dimensions accepted by current node. NOTE: for topdown in ConvGRU, it's 2 times the node's hidden dim size
+            # dimensions accepted by current node
             target_h, target_w = graph.nodes[node].input_size
+            target_c = graph.nodes[node].hidden_dim + graph.nodes[node].input_dim
             
-            proj = nn.Linear(all_input_dim*all_input_h*all_input_w, 2*graph.nodes[node].hidden_dim*target_h*target_w)
+            proj = nn.Linear(all_input_dim*all_input_h*all_input_w, target_c*target_h*target_w)
             topdown_gru_proj.append(proj)
-        self.topdown_gru_proj = nn.ModuleList(topdown_gru_proj)
+        self.topdown_projections = nn.ModuleList(topdown_gru_proj)
 
-    def forward(self, input_tensor_list):
+    def forward(self, all_inputs):
         """
-        :param a list of tensors of size n, each consisting a input_tensor: (b, t, c, h, w). 
+        :param a list of tensor of size n, each consisting a input_tensor: (b, t, c, h, w). 
             n as the number of input signals. Order should correspond to self.graph.input_node_indices
         :param topdown: size (b,hidden,h,w) 
         :return: label 
         """
-        seq_len = max([i.shape[1] for i in input_tensor_list]) #find the time length of the longest input signal
-        batch_size = input_tensor_list[0].shape[0]
+        seq_len = max([i.shape[1] for i in all_inputs]) #find the time length of the longest input signal
+        batch_size = all_inputs[0].shape[0]
         hidden_states = self._init_hidden(batch_size=batch_size)
         hidden_states_prev = self._init_hidden(batch_size=batch_size)
         #time = seq_len * self.rep
@@ -197,6 +200,7 @@ class Architecture(nn.Module):
 
                 # Go through each node and see if anything should be processed
                 for node in range(self.graph.num_node):
+                    print(node)
 
                     # input size is same for all bottomup and topdown input for ease of combining inputs
                     c = self.graph.nodes[node].input_dim
@@ -207,30 +211,38 @@ class Architecture(nn.Module):
                     bottomup = []
 
                     if node in self.graph.input_node_indices:
-                        inp = #TO DO: find the specific input that goes to this node
-                        bottomup.append(self.input_conv_list[inp](input_tensor_list[inp][:, t, :, :, :]))
+                        inp = all_inputs[self.graph.input_node_indices.index(node)]
+                        bottomup.append(inp[:, t, :, :, :].flatten(start_dim=1))
 
                     for i, bottomup_node in enumerate(self.graph.nodes[node].in_nodes_indices):
-                        bottomup.append(hidden_states_prev[bottomup_node].flatten())
+                        bottomup.append(hidden_states_prev[bottomup_node].flatten(start_dim=1))
 
                     # concatenate all input into single tensor
                     bottomup = torch.cat(bottomup, dim=1)
                     
-                    if torch.count_nonzero(bottomup) == 0:   # if there's no new info, skip rest of loop
+                    # if there's no new info, skip rest of loop
+                    if torch.count_nonzero(bottomup) == 0:   
                         continue
                     
                     # project to correct size
-                    bottomup = bottomup_projections[node](bottomup).reshape(batch_size, c, h, w)
+                    bottomup = self.bottomup_projections[node](bottomup).reshape(batch_size, c, h, w)
                     
                     ##################################
                     # Find topdown inputs, assumes every feedforward connection out of node has feedback
                     # Note there's no external topdown input
                     topdown = []
 
-                    for i, topdown_nodes in enumerate(self.graph.nodes[node].out_nodes_indices):
-                        topdown.append(hidden_states_prev[topdown_node].flatten())
+                    for i, topdown_node in enumerate(self.graph.nodes[node].out_nodes_indices):
+                        topdown.append(hidden_states_prev[topdown_node].flatten(start_dim=1))
+                        #print(topdown[0].shape)
                     
-                    topdown = topdown_projections[node](torch.cat(topdown, dim=1)).reshape(batch_size, 2*c, h, w)
+                    topdown = torch.cat(topdown, dim=1)
+                    
+                    if torch.count_nonzero(topdown) == 0:
+                        topdown = None
+                    else:
+                        topdown = self.topdown_projections[node](topdown)
+                        topdown = topdown.reshape(batch_size, self.graph.nodes[node].input_dim + self.graph.nodes[node].hidden_dim, h, w)
                     
                     #################################################
                     # Finally, pass to layer

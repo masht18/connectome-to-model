@@ -16,7 +16,7 @@ from torch import optim
 import torch.nn.functional as F
 import torchvision.transforms as T
 from utils.datagen import *
-from model.graph import Graph
+from model.graph import Graph, Architecture
 from model.topdown_gru import ConvGRUExplicitTopDown
 
 def str2bool(v):
@@ -57,8 +57,7 @@ print(device)
 # # 1: Prepare dataset
 print('Loading datasets')
 
-MNIST_path='D:\LiNC research\data'
-save_path = 'D:/LiNC research/saved_models/image_topdown.pt'
+MNIST_path='/home/mila/m/mashbayar.tugsbayar/datasets'
 train_data = datasets.MNIST(root=MNIST_path, download=True, train=True, transform=T.ToTensor())
 test_data = datasets.MNIST(root=MNIST_path, download=True, train=False, transform=T.ToTensor())
 
@@ -72,12 +71,14 @@ test_loader = DataLoader(test_data, batch_size=32, shuffle=True)
 
 connection_strengths = [1, 1, 1, 1] 
 criterion = nn.CrossEntropyLoss()
-connections = [[0,1,1,0],[0,0,1,1],[0,0,0,1], [0,0,0,0]] #V1 V2 V4 IT
-connection_strengths = [[1,1,1,1],[1,1,1,1],[1,1,1,1], [1,1,1,1]]
-input_node = [0,3] # V1
+connections = torch.tensor([[0,1,0,0],[0,0,1,0],[0,0,0,1], [0,0,0,0]]) #V1 V2 V4 IT
+connection_strengths = torch.tensor([[1,1,1,1],[1,1,1,1],[1,1,1,1], [1,1,1,1]])
+input_node = [0] # V1
 output_node = 3 #IT
+input_dims = [1, 0, 0, 0]
+input_sizes = [(28, 28), (0, 0), (0, 0), (0, 0)]
 graph = Graph(connections = connections, conn_strength = connection_strengths, input_node_indices = input_node, output_node_index = output_node, dtype = torch.cuda.FloatTensor)
-model = graph.build_architecture().cuda().float()
+model = Architecture(graph, input_sizes, input_dims).cuda().float()
 # model = ConvGRUExplicitTopDown((28, 28), 10, input_dim=1, 
 #                                hidden_dim=10, 
 #                                kernel_size=(3,3),

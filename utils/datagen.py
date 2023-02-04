@@ -88,8 +88,8 @@ def sequence_gen(imgs, label, clean_data, mnist_ref, seq_style = 'addition', lab
             t1_label = t2_label - 1
             t0_label = t1_label - 2
             
-        t0 = torch.unsqueeze(clean_data[random.choice(mnist_ref[t0_label]).item()][0], 0).cpu()
-        t1 = torch.unsqueeze(clean_data[random.choice(mnist_ref[t1_label]).item()][0], 0).cpu() 
+        t0 = torch.unsqueeze(clean_data[random.choice(mnist_ref[t0_label]).item()][0], 0).cuda()
+        t1 = torch.unsqueeze(clean_data[random.choice(mnist_ref[t1_label]).item()][0], 0).cuda() 
         
         # construct sequence
         sequence = torch.vstack((t0, t1, t2))

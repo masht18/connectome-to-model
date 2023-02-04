@@ -111,7 +111,6 @@ def test_sequence(dataloader, clean_data, dataset_ref):
     with torch.no_grad():
 
         for i, data in enumerate(dataloader, 0):
-            print(i)
             optimizer.zero_grad()
 
             imgs, label = data
@@ -142,8 +141,6 @@ def train_sequence():
     running_loss = 0.0
         
     for i, data in enumerate(train_loader, 0):
-        if (i % 10 == 0):
-            print (i)
         optimizer.zero_grad()
             
         imgs, label = data

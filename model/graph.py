@@ -33,7 +33,8 @@ class Graph(object):
     """
     def __init__(self, connections, conn_strength, 
                  input_node_indices, output_node_index, 
-                 input_node_params = [], output_size = 10, 
+                 input_node_params = [(1, 28, 28), (10, 28, 28), (10, 28, 28), (10, 28, 28)], 
+                 output_size = 10, 
                  directed=True, dtype = torch.cuda.FloatTensor, 
                  topdown = True, bias = False):
         self.input_node_indices = input_node_indices
@@ -46,7 +47,7 @@ class Graph(object):
         self.max_rank = -1
         self.num_edge = 0 #assuming directed edge. Will need to change if graph is undirected
         self.topdown = topdown
-        self.nodes = self.generate_node_list(connections) #a list of Node object
+        self.nodes = self.generate_node_list(connections, input_node_params) #a list of Node object
         self.dtype = dtype 
         self.bias = bias
         self.output_size = output_size
@@ -61,14 +62,16 @@ class Graph(object):
 
 
 
-    def generate_node_list(self,connections):
+    def generate_node_list(self,connections, input_node_params):
         nodes = []
         # initialize node list
         for n in range(self.num_node):
             input_nodes = torch.nonzero(connections[:, n])
             output_nodes = torch.nonzero(connections[n, :])
+            input_dim = input_node_params[n][0]
+            input_size = (input_node_params[n][1], input_node_params[n][2])
             
-            node = Node(n, input_nodes, output_nodes)
+            node = Node(n, input_nodes, output_nodes, input_dim=input_dim, input_size=input_size)
             nodes.append(node)
             
         return nodes
@@ -154,7 +157,7 @@ class Architecture(nn.Module):
             # dimensions of ALL bottom-up inputs to current node
             all_input_h = sum([graph.nodes[i.item()].input_size[0] for i in self.graph.nodes[node].in_nodes_indices]) + input_sizes[node][0]
             all_input_w = sum([graph.nodes[i.item()].input_size[1] for i in self.graph.nodes[node].in_nodes_indices]) + input_sizes[node][1]
-            all_input_dim = sum([graph.nodes[i.item()].input_dim for i in self.graph.nodes[node].in_nodes_indices]) + img_channel_dims[node]
+            all_input_dim = sum([graph.nodes[i.item()].hidden_dim for i in self.graph.nodes[node].in_nodes_indices]) + img_channel_dims[node]
             
             target_h, target_w = graph.nodes[node].input_size
             
@@ -200,7 +203,6 @@ class Architecture(nn.Module):
 
                 # Go through each node and see if anything should be processed
                 for node in range(self.graph.num_node):
-                    print(node)
 
                     # input size is same for all bottomup and topdown input for ease of combining inputs
                     c = self.graph.nodes[node].input_dim
@@ -250,7 +252,7 @@ class Architecture(nn.Module):
                     hidden_states_prev[node] = hidden_states[node]
                     hidden_states[node] = h
 
-        pred = self.fc1(F.relu(torch.flatten(hidden_state_cur[self.graph.output_node_index], start_dim=1)))
+        pred = self.fc1(F.relu(torch.flatten(hidden_states[self.graph.output_node_index], start_dim=1)))
         pred = self.fc2(F.relu(pred))
           
         return pred

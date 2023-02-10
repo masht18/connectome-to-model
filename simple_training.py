@@ -71,22 +71,22 @@ test_loader = DataLoader(test_data, batch_size=32, shuffle=True)
 
 connection_strengths = [1, 1, 1, 1] 
 criterion = nn.CrossEntropyLoss()
-#connections = torch.tensor([[0,1,0,0],[0,0,1,0],[0,0,0,1], [0,0,0,0]]) #V1 V2 V4 IT
-#node_params = [(1, 28, 28), (10, 28, 28), (10, 28, 28), (10, 28, 28)]
-#connection_strengths = torch.tensor([[1,1,1,1],[1,1,1,1],[1,1,1,1], [1,1,1,1]])
 
-connections = torch.tensor([[0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [0, 0, 0, 0]])
-node_params = [(1, 28, 28, 5, 5), (10, 15, 15, 5, 5), (10, 9, 9, 3, 3), (10, 3, 3, 3, 3)]
+#connections = torch.tensor([[0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [0, 0, 0, 0]])
+#node_params = [(1, 28, 28, 5, 5), (10, 15, 15, 5, 5), (10, 9, 9, 3, 3), (10, 3, 3, 3, 3)]
+
 input_node = [0] # V1
 output_node = 3 #IT
 input_dims = [1, 0, 0, 0]
 input_sizes = [(28, 28), (0, 0), (0, 0), (0, 0)]
-graph = Graph(connections = connections, 
-              conn_strength = connection_strengths, 
-              input_node_indices = input_node, 
-              output_node_index = output_node,
-              input_node_params = node_params,
-              dtype = torch.cuda.FloatTensor)
+graph_loc = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/sample_graph.csv'
+graph = Graph(graph_loc, input_nodes=[0], output_node=3)
+#graph = Graph(connections = connections, 
+#              conn_strength = connection_strengths, 
+#              input_node_indices = input_node, 
+#             output_node_index = output_node,
+#              input_node_params = node_params,
+#              dtype = torch.cuda.FloatTensor)
 model = Architecture(graph, input_sizes, input_dims).cuda().float()
 optimizer = optim.Adam(model.parameters())
 

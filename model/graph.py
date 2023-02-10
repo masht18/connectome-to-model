@@ -2,6 +2,7 @@ from model.topdown_gru import ConvGRUTopDownCell
 import torch
 from torch import nn
 import torch.nn.functional as F
+import pandas as pd
 
 #def conv_output_size(input_size, kernel_size, stride=1):
 #    padding = kernel_size[0] // 2
@@ -35,30 +36,25 @@ class Graph(object):
         directed binary matrix of connections row --> column 
     :param connection_strength
     """
-    def __init__(self, connections, conn_strength, 
-                 input_node_indices, output_node_index, 
-                 input_node_params = [(1, 28, 28, 3, 3)], 
-                 output_size = 10, 
-                 directed=True, dtype = torch.cuda.FloatTensor, 
-                 topdown = True, bias = False):
-        self.input_node_indices = input_node_indices
-        self.output_node_index = output_node_index
-        self.input_node_params = input_node_params #a list of length len(input_node_indices), each consist of a list of 3: c,h,w 
-        self.conn = connections #adjacency matrix
-        self.conn_strength = conn_strength
+    def __init__(self, graph_loc, input_nodes, output_node, directed=True, bias=False, dtype = torch.cuda.FloatTensor):
+        
+        graph_df = pd.read_csv(graph_loc)
+        self.num_node = graph_df.shape[0]
+        self.conn_strength = torch.tensor(graph_df.iloc[:, :self.num_node].values)   # connection_strength_matrix
+        self.conn = self.conn_strength > 0                                           # binary matrix of connections
+        self.node_dims = [row for _, row in graph_df.iterrows()]                     # dimensions of each node/area
+        self.nodes = self.generate_node_list(self.conn, self.node_dims)              # turn dataframe into list of graph nodes
+        
+        self.input_node_indices = input_nodes
+        self.output_node_index = output_node
+
         self.directed = directed #flag for whether the connections are directed 
-        self.num_node = connections.shape[0]
-        self.max_rank = -1
-        self.num_edge = 0 #assuming directed edge. Will need to change if graph is undirected
-        self.topdown = topdown
-        self.nodes = self.generate_node_list(connections, input_node_params) #a list of Node object
-        self.dtype = dtype 
+
+        self.dtype = dtype
         self.bias = bias
-        self.output_size = output_size
-        #self.nodes[output_node].dist = 0
-        #self.max_length = self.find_longest_path_length()
-        for input_node in self.input_node_indices:
-            self.rank_node(self.nodes[input_node],self.nodes[self.output_node_index], 0, 0)
+
+        #for input_node in self.input_node_indices:
+        #    self.rank_node(self.nodes[input_node],self.nodes[self.output_node_index], 0, 0)
 
         # for node in range (self.num_node):
             
@@ -66,17 +62,18 @@ class Graph(object):
 
 
 
-    def generate_node_list(self,connections, input_node_params):
+    def generate_node_list(self,connections, node_dims):
         nodes = []
         # initialize node list
         for n in range(self.num_node):
             input_nodes = torch.nonzero(connections[:, n])
             output_nodes = torch.nonzero(connections[n, :])
-            input_dim = input_node_params[n][0]
-            input_size = (input_node_params[n][1], input_node_params[n][2])
-            kernel_size = (input_node_params[n][3], input_node_params[n][4])
+            hidden_dim = node_dims[n].hidden_dim
+            input_dim = node_dims[n].input_dim
+            input_size = (node_dims[n].input_h, node_dims[n].input_w)
+            kernel_size = (node_dims[n].kernel_h, node_dims[n].kernel_w)
             
-            node = Node(n, input_nodes, output_nodes, input_dim=input_dim, input_size=input_size)
+            node = Node(n, input_nodes, output_nodes, input_dim=input_dim, input_size=input_size, hidden_dim=hidden_dim)
             nodes.append(node)
             
         return nodes
@@ -111,7 +108,7 @@ class Graph(object):
         #I think this is not needed but we'll see
 
 class Architecture(nn.Module):
-    def __init__(self, graph, input_sizes, img_channel_dims, rep=1):
+    def __init__(self, graph, input_sizes, img_channel_dims, output_size=10, dropout=True, dropout_p=0.25, rep=1):
         '''
         :param graph (Grapph object)
             object containing architecture graph
@@ -119,29 +116,31 @@ class Architecture(nn.Module):
             list of input sizes (height, width) per node. If a node doesn't receive an outside input, it's (0, 0)
         :param img_channel_dims (list of ints)
             list of input dimension sizes per node. If a node doesn't receive an outside input, it's 0
-        
+        :param dropout (bool)
+        :param rep (int)
+            time steps to revisit the sequence
         '''
         super(Architecture, self).__init__()
 
         self.graph = graph
         self.rep = rep # repetition, i.e how many times to view the sequence in full
-        
+        self.use_dropout = dropout
+        self.dropout = nn.Dropout(dropout_p)
         
         cell_list = []
         for node in range(graph.num_node):
             cell_list.append(ConvGRUTopDownCell(input_size=((graph.nodes[node].input_size[0], graph.nodes[node].input_size[1])), 
                                          input_dim=graph.nodes[node].input_dim, 
-                                         hidden_dim = graph.nodes[node].hidden_dim,
+                                         hidden_dim = int(graph.nodes[node].hidden_dim),
                                          kernel_size=graph.nodes[node].kernel_size,
                                          bias=graph.bias,
                                          dtype=graph.dtype))
         self.cell_list = nn.ModuleList(cell_list)
         
-        #this is some disgusting line of code
-        # Mashbayar: don't worry, does this look better?
+        # Dimensionality of output layer
         h, w = self.graph.nodes[self.graph.output_node_index].input_size
         self.fc1 = nn.Linear(h * w * self.graph.nodes[self.graph.output_node_index].hidden_dim, 100) 
-        self.fc2 = nn.Linear(100, self.graph.output_size)
+        self.fc2 = nn.Linear(100, output_size)
         
 
         # PROJECTIONS FOR INPUT
@@ -173,6 +172,7 @@ class Architecture(nn.Module):
             
             proj = nn.Linear(all_input_dim*all_input_h*all_input_w, graph.nodes[node].input_dim*target_h*target_w)
             bottomup_projections.append(proj)
+            
         self.bottomup_projections = nn.ModuleList(bottomup_projections)
         
         
@@ -266,6 +266,8 @@ class Architecture(nn.Module):
                     #################################################
                     # Finally, pass to layer
                     h = self.cell_list[node](bottomup, hidden_states[node], topdown)
+                    if self.use_dropout:
+                        h = self.dropout(h)
                     hidden_states[node] = h
                 hidden_states_prev = hidden_states
 

@@ -4,72 +4,6 @@ from torch import nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 
-class ConvGRUCell(nn.Module):
-    def __init__(self, input_size, input_dim, hidden_dim, kernel_size, bias, dtype):
-        """
-        Single ConvGRU block without topdown
-        :param input_size: (int, int)
-            Height and width of input tensor as (height, width).
-        :param input_dim: int
-            Number of channels of input tensor.
-        :param hidden_dim: int
-            Number of channels of hidden state.
-        :param kernel_size: (int, int)
-            Size of the convolutional kernel.
-        :param bias: bool
-            Whether or not to add the bias.
-        :param dtype: torch.cuda.FloatTensor or torch.FloatTensor
-            Whether or not to use cuda.
-        """
-        super(ConvGRUCell, self).__init__()
-        self.height, self.width = input_size
-        self.padding = kernel_size[0] // 2, kernel_size[1] // 2
-        self.hidden_dim = hidden_dim
-        self.bias = bias
-        self.dtype = dtype
-
-        self.conv_gates = nn.Conv2d(in_channels=input_dim + hidden_dim,
-                                    out_channels=2*self.hidden_dim,  # for update_gate,reset_gate respectively
-                                    kernel_size=kernel_size,
-                                    padding=self.padding,
-                                    bias=self.bias)
-
-        self.conv_can = nn.Conv2d(in_channels=input_dim+hidden_dim,
-                              out_channels=self.hidden_dim, # for candidate neural memory
-                              kernel_size=kernel_size,
-                              padding=self.padding,
-                              bias=self.bias)
-
-    def init_hidden(self, batch_size):
-        return (Variable(torch.zeros(batch_size, self.hidden_dim, self.height, self.width)).type(self.dtype))
-
-    def forward(self, input_tensor, h_cur=None):
-        """
-        :param self:
-        :param input_tensor: (b, c, h, w)
-            input is actually the target_model
-        :param h_cur: (b, c_hidden, h, w)
-            current hidden and cell states respectively
-        :return: h_next,
-            next hidden state
-        """
-        if h_cur == None:
-            h_cur = self.init_hidden(input_tensor.shape[0])
-            
-        combined = torch.cat([input_tensor, h_cur], dim=1)
-        combined_conv = self.conv_gates(combined)
-
-        gamma, beta = torch.split(combined_conv, self.hidden_dim, dim=1)
-        reset_gate = torch.sigmoid(gamma)
-        update_gate = torch.sigmoid(beta)
-
-        combined = torch.cat([input_tensor, reset_gate*h_cur], dim=1)
-        cc_cnm = self.conv_can(combined)
-        cnm = torch.tanh(cc_cnm)
-
-        h_next = (1 - update_gate) * h_cur + update_gate * cnm
-        return h_next
-
 class ConvGRUTopDownCell(nn.Module):
     def __init__(self, input_size, input_dim, hidden_dim, topdown_dim, kernel_size, bias, dtype):
         """
@@ -136,9 +70,11 @@ class ConvGRUTopDownCell(nn.Module):
         update_gate = torch.sigmoid(beta)
            
         if topdown == None:
-            topdown = torch.zeros_like(combined_conv)
+            topdown = torch.zeros_like(combined_conv) #TODO: ask
 
-        combined = torch.cat([input_tensor, reset_gate*h_cur], dim=1) * (F.relu(topdown) + 1)
+        a = torch.cat([input_tensor, reset_gate*h_cur], dim=1)
+        b = (F.relu(topdown) + 1)
+        combined =  a*b
         cc_cnm = self.conv_can(combined)
         cnm = torch.tanh(cc_cnm)
 
@@ -226,11 +162,13 @@ class ConvGRUExplicitTopDown(nn.Module):
                                          dtype=self.dtype))
             if i != 0:
                 feedback_linear_list.append(nn.Linear(hidden_dim[i], 2*hidden_dim[i-1]))
+                #
         self.cell_list = nn.ModuleList(cell_list)
         self.feedback_linear_list = nn.ModuleList(feedback_linear_list)
         
         # The Topdown signal may consist of different modalities. 
         # This top layer processes the signal depending on its modality 
+        # this section is left unused.
         if topdown_type == 'image':
             self.topdown_gru = ConvGRUCell(input_size=(self.height, self.width),
                                          input_dim=input_dim,
@@ -258,46 +196,51 @@ class ConvGRUExplicitTopDown(nn.Module):
     def forward(self, input_tensor, topdown):
         """
         :param input_tensor: (b, t, c, h, w) or (t,b,c,h,w) depends on if batch first or not
-        :param topdown: 27 bits encoding image label or image of size (h, w)
+        :param topdown: size (b,hidden,h,w) 
         :return: label 
         """
+        
         if not self.batch_first:
             # (t, b, c, h, w) -> (b, t, c, h, w)
             input_tensor = input_tensor.permute(1, 0, 2, 3, 4)
 
         hidden_state = self._init_hidden(batch_size=input_tensor.size(0))
 
-        seq_len = input_tensor.size(1)
+        seq_len = 1 #for easy testing purposes
+        #seq_len = input_tensor.size(1)
 
         # Images in sequence goes through all layers one by one
         # This is a reverse of the original convgru code, where the entire sequence went through one layer before advancing to next
         for rep in range(self.reps):
             for t in range(seq_len):
                 current_input = self.input_conv(input_tensor[:, t, :, :, :])
+                #current_input = self.input_conv(input_tensor[:, :, :, :])#[32,1,28,28]
 
                 for layer_idx in range(self.num_layers):
                     # Current state
-                    h = hidden_state[layer_idx]
+                    h = hidden_state[layer_idx] 
 
                     # Bottom-up signal is either the state from the bottom layer or the input if it's the bottom-most layer
-                    #bottomup = hidden_state[layer_idx-1] if layer_idx != 0 else current_input
-                    bottomup = self._connection_decay(hidden_state[layer_idx-1], self.connection_strengths[layer_idx-1]) if layer_idx != 0 else current_input
+                    bottomup = hidden_state[layer_idx-1] if layer_idx != 0 else current_input
+                    #bottomup = self._connection_decay(hidden_state[layer_idx-1], self.connection_strengths[layer_idx-1]) if layer_idx != 0 else current_input
 
                     if self.topdown == False:
                     #Disable topdown if using the no-topdown version of model
                         topdown_sig = None   
                     elif layer_idx+1 != self.num_layers:
                     #If non-final layer, use the next state's hidden as topdown input
-                        topdown_sig = self.feedback_linear_list[layer_idx](hidden_state[layer_idx+1])
-                        topdown_sig = self._connection_decay(topdown_sig, self.connection_strengths[layer_idx])
+                        m = nn.Linear(self.height*self.width*self.hidden_dim[layer_idx],self.height*self.width*self.hidden_dim[layer_idx+1])
+                        topdown_sig = m(torch.flatten(hidden_state[layer_idx],start_dim=1))
+                        #topdown_sig = self.feedback_linear_list[layer_idx](flattened)
+                        #topdown_sig = self._connection_decay(topdown_sig, self.connection_strengths[layer_idx])
                     else:
                     #If final layer and topdown is not turned off, use the given topdown
                         topdown_sig = self.topdown_gru(topdown)
                         
-                    #If the topdown signal was text, turn the 1D gru output to 3D convgru topdown signal
-                        if self.topdown_type == 'text' or self.topdown_type == 'audio':
-                            topdown_sig = torch.reshape(topdown_sig, (topdown_sig.shape[0], 2*self.hidden_dim[0], self.height, self.width))             
+                        m = nn.Linear(self.height*self.width*self.hidden_dim[layer_idx],self.height*self.width*self.hidden_dim[layer_idx]) #changed dim here
+                        topdown_sig = m(torch.flatten(hidden_state[layer_idx],start_dim=1))
 
+                    topdown_sig = torch.reshape(topdown_sig, (topdown_sig.shape[0],self.hidden_dim[layer_idx],self.height,self.width))
                     # Update hidden state of this layer by feeding bottom-up, top-down and current cell state into gru cell
                     h = self.cell_list[layer_idx](input_tensor=bottomup, # (b,t,c,h,w)
                                                   h_cur=h, topdown=topdown_sig)

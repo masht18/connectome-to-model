@@ -7,6 +7,7 @@ import math
 import pickle
 import argparse
 
+
 from scipy.special import softmax
 from torch import nn
 from torchvision import datasets
@@ -15,9 +16,10 @@ from torch.autograd import Variable
 from torch import optim
 import torch.nn.functional as F
 import torchvision.transforms as T
+
 from utils.datagen import *
 from model.graph import Graph, Architecture
-from model.topdown_gru import ConvGRUExplicitTopDown
+
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -30,7 +32,7 @@ def str2bool(v):
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--cuda', type = bool, default = True, help = 'use gpu or not')
-parser.add_argument('--epochs', type = int, default = 10)
+parser.add_argument('--epochs', type = int, default = 50)
 parser.add_argument('--layers', type = int, default = 1)
 parser.add_argument('--topdown_c', type = int, default = 10)
 parser.add_argument('--topdown_h', type = int, default = 10)
@@ -46,7 +48,6 @@ parser.add_argument('--results_save', type = str, default = 'results/no_topdown_
 
 args = vars(parser.parse_args())
 
-
 # %%
 # Use GPU if available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -57,6 +58,7 @@ print(device)
 # # 1: Prepare dataset
 print('Loading datasets')
 
+
 MNIST_path='/home/mila/m/mashbayar.tugsbayar/datasets'
 train_data = datasets.MNIST(root=MNIST_path, download=True, train=True, transform=T.ToTensor())
 test_data = datasets.MNIST(root=MNIST_path, download=True, train=False, transform=T.ToTensor())
@@ -65,8 +67,10 @@ test_data = datasets.MNIST(root=MNIST_path, download=True, train=False, transfor
 mnist_ref_train = generate_label_reference(train_data)
 mnist_ref_test = generate_label_reference(test_data)
 
+
 train_loader = DataLoader(train_data, batch_size=32, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=32, shuffle=True)
+
 
 
 connection_strengths = [1, 1, 1, 1] 
@@ -88,6 +92,7 @@ graph = Graph(graph_loc, input_nodes=[0], output_node=3)
 #              input_node_params = node_params,
 #              dtype = torch.cuda.FloatTensor)
 model = Architecture(graph, input_sizes, input_dims).cuda().float()
+
 optimizer = optim.Adam(model.parameters())
 
 def test_sequence(dataloader, clean_data, dataset_ref):
@@ -186,5 +191,5 @@ for epoch in range(args['epochs']):
 
     with open(args['results_save'], "wb") as f:
         pickle.dump(losses, f)
-        
+
     torch.save(model.state_dict(), args['model_save'])

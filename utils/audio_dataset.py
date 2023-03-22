@@ -1,20 +1,80 @@
 import os
 import soundfile
 #import librosa
+import gzip
+import random
 
 import torchaudio
 import torch
 import numpy as np
 import torch.utils.data as tdata
+from utils.datagen import generate_label_reference
 from glob import glob
+
+class AudioVisualDataset(tdata.Dataset):
+    '''
+    torch dataset that gives simultaneous image and audio clues
+    
+    '''
+    def __init__(self, visual_dataset, audio_dataset, cache_dir, 
+                 visual_ambiguity=False, audio_ambiguity=False, 
+                 match=True, split='train', cache=False):
+        self.visual = visual_dataset
+        self.audio = audio_dataset
+        
+        self.visual_ambiguity = visual_ambiguity
+        self.match = match
+        
+        if cache:  
+            self.audio_ref = generate_label_reference(self.audio, 10)
+            self.data, self.targets = self.generate_dataset()
+            torch.save(self.data, f'{cache_dir}/{split}_data.pt')
+            torch.save(self.targets, f'{cache_dir}/{split}_targets.pt')
+        else:
+            self.data = torch.load(f'{cache_dir}/{split}_data.pt')
+            self.targets = torch.load(f'{cache_dir}/{split}_targets.pt')
+
+    def __len__(self):
+        return len(self.visual)
+
+    def __getitem__(self, index):
+        return self.data[index], self.targets[index]
+    
+    def generate_dataset(self):
+        '''
+        Internal method, use when generating data for the first time
+        '''
+        data = []
+        targets = []
+        
+        for index in range(len(self.visual)):
+            # Get visual stimulus
+            if self.visual_ambiguity: 
+                (_, img, _), target = self.triplet_dataset[index] # if drawing from the ambiguous dataset
+                gt = random.randint(0, 1)                         # randomly pick one of the labels
+                target = target[gt]
+            else:
+                img, target = self.visual[index] 
+
+            # Get audio stimulus
+            if self.match:
+                audio = self.audio[random.choice(self.audio_ref[target])][0]
+            else:
+                audio_target = torch.randint(0, 10, (1, ))
+                audio = self.audio[random.choice(self.audio_ref[audio_target])][0]
+            
+            # Save img + audio + target combo
+            data.append((img, audio))
+            targets.append(target)
+
+        return data, targets
 
 '''
 Modified from NFB's L’éclat du rire (The Sound of Laughter) code 
 https://github.com/nfb-onf/sound-of-laughter
 '''
-
-
 class MELDataset(tdata.Dataset):
+    'Given FSDD audio dataset, make a dataset of MEL spectrograms'
 
     def __init__(self, dataset, stft_hopsize=64, mel_channels=64, sample_rate=2,
                  transforms=None, pad_length=64, logmag=True, n_samples=None, device="cpu"):
@@ -45,7 +105,8 @@ class MELDataset(tdata.Dataset):
 
         self.transforms = transforms
 
-        self.mels = {}
+        #self.audio = dataset.audio
+        #self.targets = dataset.targets
 
     #def mel2audio(self, mel):
     #    if self.logmag:
@@ -59,8 +120,8 @@ class MELDataset(tdata.Dataset):
         return mel
 
     def __getitem__(self, idx):
-        data = self.wav_db.audio[idx].data()
-        label = self.wav_db.labels[idx].data()
+        data = self.audio[idx].data()
+        label = self.targets[idx].data()
 
         #if self.transforms is not None:
         #    data = self.transforms(data, self.sample_rate).astype(np.float32)

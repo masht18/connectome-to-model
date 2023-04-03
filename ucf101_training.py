@@ -94,16 +94,15 @@ def custom_collate(batch):
         filtered_batch.append((video, label))
     return torch.utils.data.dataloader.default_collate(filtered_batch)
 
-train_data = datasets.UCF101(args['ucf_data'], args['ucf_annot'], 
-                             frames_per_clip=args['frames_per_clip'],
-                            train=True, transform=tfs)
-test_data = datasets.UCF101(args['ucf_data'], args['ucf_annot'], 
-                             frames_per_clip=args['frames_per_clip'],
-                            train=False, transform=tfs)
+#train_data = datasets.UCF101(args['ucf_data'], args['ucf_annot'], 
+#                             frames_per_clip=args['frames_per_clip'],
+#                            train=True, transform=tfs)
+#test_data = datasets.UCF101(args['ucf_data'], args['ucf_annot'], 
+#                             frames_per_clip=args['frames_per_clip'],
+#                            train=False, transform=tfs)
 
-train_loader = DataLoader(train_data, batch_size=32, shuffle=True)
-test_loader = DataLoader(test_data, batch_size=32, shuffle=True)
-
+#train_loader = DataLoader(train_data, batch_size=4, shuffle=True, collate_fn=custom_collate)
+#test_loader = DataLoader(test_data, batch_size=4, shuffle=True, collate_fn=custom_collate)
 
 connection_strengths = [1, 1, 1, 1] 
 criterion = nn.CrossEntropyLoss()
@@ -113,9 +112,9 @@ criterion = nn.CrossEntropyLoss()
 
 input_node = [0] # V1
 output_node = 3 #IT
-input_dims = [1, 0, 0, 0]
-input_sizes = [(28, 28), (0, 0), (0, 0), (0, 0)]
-graph_loc = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/sample_graph.csv'
+input_dims = [3, 0, 0, 0]
+input_sizes = [(240, 320), (0, 0), (0, 0), (0, 0)]
+graph_loc = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/sample_graph_ucf_test.csv'
 graph = Graph(graph_loc, input_nodes=[0], output_node=3)
 #graph = Graph(connections = connections, 
 #              conn_strength = connection_strengths, 
@@ -124,9 +123,10 @@ graph = Graph(graph_loc, input_nodes=[0], output_node=3)
 #              input_node_params = node_params,
 #              dtype = torch.cuda.FloatTensor)
 model = Architecture(graph, input_sizes, input_dims).cuda().float()
+print('Model loaded')
 optimizer = optim.Adam(model.parameters())
 
-def test_sequence(dataloader, clean_data, dataset_ref):
+def test_sequence(dataloader, clean_data):
     
     '''
     Inference
@@ -190,8 +190,8 @@ else:
     print("No pretrained model found. Training new one.")
 
 for epoch in range(args['epochs']):
-    train_acc = test_sequence(train_loader, train_data, mnist_ref_train)
-    val_acc = test_sequence(test_loader, test_data, mnist_ref_test)
+    train_acc = test_sequence(train_loader, train_data)
+    #val_acc = test_sequence(test_loader, test_data)
     loss = train_sequence()
     
     printlog = '| epoch {:3d} | running loss {:5.4f} | train accuracy {:1.5f} |val accuracy {:1.5f}'.format(epoch, loss, train_acc, val_acc)

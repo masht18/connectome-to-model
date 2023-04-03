@@ -5,7 +5,7 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 
 class ConvGRUTopDownCell(nn.Module):
-    def __init__(self, input_size, input_dim, hidden_dim, topdown_dim, kernel_size, bias, dtype):
+    def __init__(self, input_size, input_dim, hidden_dim, kernel_size, bias, dtype):
         """
         Single ConvGRU block with topdown
         :param input_size: (int, int)
@@ -14,8 +14,6 @@ class ConvGRUTopDownCell(nn.Module):
             Number of channels of input tensor.
         :param hidden_dim: int
             Number of channels of hidden state.
-        :param topdown_dim: int
-            Number of channels of topdown signal
         :param kernel_size: (int, int)
             Size of the convolutional kernel.
         :param bias: bool
@@ -27,20 +25,19 @@ class ConvGRUTopDownCell(nn.Module):
         self.height, self.width = input_size
         self.padding = kernel_size[0] // 2, kernel_size[1] // 2
         self.hidden_dim = hidden_dim
-        self.topdown_dim = topdown_dim
         self.bias = bias
         self.dtype = dtype
 
         self.conv_gates = nn.Conv2d(in_channels=input_dim + hidden_dim,
                                     out_channels=2*self.hidden_dim,  # for update_gate,reset_gate + 2*topdown
                                     kernel_size=kernel_size,
-                                    padding=self.padding,
+                                    padding= (kernel_size[0] // 2, kernel_size[1] // 2),
                                     bias=self.bias)
         
-        if topdown_dim == 0:
-            topdown_channel_dim = 1 
-        else: 
-            topdown_channel_dim = topdown_dim
+        #if topdown_dim == 0:
+        #    topdown_channel_dim = 1 
+        #else: 
+        #    topdown_channel_dim = topdown_dim
         
         self.conv_can = nn.Conv2d(in_channels=input_dim+hidden_dim,
                               out_channels=self.hidden_dim, # for candidate neural memory
@@ -156,7 +153,6 @@ class ConvGRUExplicitTopDown(nn.Module):
             cell_list.append(ConvGRUTopDownCell(input_size=(self.height, self.width),
                                          input_dim=cur_input_dim,
                                          hidden_dim=self.hidden_dim[i],
-                                         topdown_dim=next_dim,
                                          kernel_size=self.kernel_size[i],
                                          bias=self.bias,
                                          dtype=self.dtype))

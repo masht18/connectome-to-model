@@ -9,7 +9,8 @@ import pandas as pd
 #    return ((input_size - kernel_size) // stride) + 1
 
 class Node:
-    def __init__(self, index, input_nodes, output_nodes, input_size = (28, 28), input_dim = 1, hidden_dim = 10, kernel_size = (3,3)):
+    def __init__(self, index, input_nodes, output_nodes, input_size = (28, 28), output_size = (28, 28),
+                 input_dim = 1, hidden_dim = 10, kernel_size = (3,3)):
         self.index = index
         self.in_nodes_indices = input_nodes #nodes passing values into current node #contains Node index (int)
         self.out_nodes_indices = output_nodes #nodes being passed with values from current node #contains Node index (int)
@@ -20,12 +21,25 @@ class Node:
 
         #cell params
         self.input_size = input_size #Height and width of input tensor as (height, width).
+        self.output_size = output_size
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
-        self.kernel_size = kernel_size 
+        self.kernel_size = kernel_size
+        self.stride = (self.calc_stride(input_size[0], output_size[0], kernel_size[0]), 
+                      self.calc_stride(input_size[1], output_size[1], kernel_size[1]))
+        self.padding = (self.calc_padding(input_size[0], output_size[0], kernel_size[0], self.stride[0]), 
+                      self.calc_padding(input_size[1], output_size[1], kernel_size[1], self.stride[1]))
+             
 
     def __eq__(self, other): 
         return self.index == other.index
+    
+    def calc_stride(self, input_size, output_size, kernel_size):
+        return (input_size - kernel_size) // (output_size - 1)
+
+    def calc_padding(self, input_size, output_size, kernel_size, stride):
+        return ((output_size - 1) * stride + kernel_size - input_size)
+    
 
 
 class Graph(object):
@@ -71,9 +85,15 @@ class Graph(object):
             hidden_dim = node_dims[n].hidden_dim
             input_dim = node_dims[n].input_dim
             input_size = (node_dims[n].input_h, node_dims[n].input_w)
+            output_size = (node_dims[n].output_h, node_dims[n].output_w)
             kernel_size = (node_dims[n].kernel_h, node_dims[n].kernel_w)
-            
-            node = Node(n, input_nodes, output_nodes, input_dim=input_dim, input_size=input_size, hidden_dim=hidden_dim)
+           
+            node = Node(n, input_nodes, output_nodes, 
+                        input_dim=input_dim, 
+                        input_size=input_size,
+                        output_size=input_size, 
+                        hidden_dim=hidden_dim,
+                       kernel_size=kernel_size)
             nodes.append(node)
             
         return nodes
@@ -108,7 +128,9 @@ class Graph(object):
         #I think this is not needed but we'll see
 
 class Architecture(nn.Module):
-    def __init__(self, graph, input_sizes, img_channel_dims, output_size=10, dropout=True, dropout_p=0.25, rep=1):
+    def __init__(self, graph, input_sizes, img_channel_dims, 
+                 output_size=10, dropout=True, dropout_p=0.25, rep=1,
+                device='cuda'):
         '''
         :param graph (Grapph object)
             object containing architecture graph
@@ -150,12 +172,12 @@ class Architecture(nn.Module):
         #    input_conv_list.append(nn.Conv2d(in_channels= self.graph.nodes[self.graph.input_node_indices[input]].input_dim,
         #                        out_channels= self.graph.nodes[self.graph.input_node_indices[input]].hidden_dim,
         #                        kernel_size=3,
-        #                        padding=1,
         #                        device = 'cuda'))
-        #self.input_conv_list = nn.ModuleList(input_conv_list)
+        #self.input_convs = nn.ModuleList(input_conv_list)
         
         # PROJECTIONS FOR BOTTOM-UP INTERLAYER CONNECTIONS
         bottomup_projections = []
+        pooling = []
         
         for node in range(graph.num_node):
             # dimensions of ALL bottom-up inputs to current node
@@ -164,20 +186,30 @@ class Architecture(nn.Module):
             #all_input_w = sum([conv_output_size(graph.nodes[i.item()].input_size[1], graph.nodes[i.item()].kernel_size[1]) 
             #                  for i in self.graph.nodes[node].in_nodes_indices]) + input_sizes[node][1]
             
-            all_input_h = sum([graph.nodes[i.item()].input_size[0] for i in self.graph.nodes[node].in_nodes_indices]) + input_sizes[node][0]
-            all_input_w = sum([graph.nodes[i.item()].input_size[1] for i in self.graph.nodes[node].in_nodes_indices]) + input_sizes[node][1]
-            all_input_dim = sum([graph.nodes[i.item()].hidden_dim for i in self.graph.nodes[node].in_nodes_indices]) + img_channel_dims[node]
+            all_input_h = [graph.nodes[i.item()].output_size[0] for i in self.graph.nodes[node].in_nodes_indices].append(input_sizes[node][0])
+            all_input_w = [graph.nodes[i.item()].output_size[1] for i in self.graph.nodes[node].in_nodes_indices].append(input_sizes[node][1])
+            all_input_dim = [graph.nodes[i.item()].hidden_dim for i in self.graph.nodes[node].in_nodes_indices] + img_channel_dims[node]
             
             target_h, target_w = graph.nodes[node].input_size
             
-            proj = nn.Linear(all_input_dim*all_input_h*all_input_w, graph.nodes[node].input_dim*target_h*target_w)
+            # pooling at the end of the layer ()
+            layer_pool = nn.MaxPool2d(graph.nodes[node].kernel_size, graph.nodes[node].stride, graph.nodes[node].padding)
+            pooling.append(layer_pool)
+            
+            # projection
+            proj = nn.Linear(sum([all_input_dim[i]*all_input_h[i]*all_input_w[i] for i in range(len(all_input_dim))]),
+                             graph.nodes[node].input_dim*target_h*target_w)
             bottomup_projections.append(proj)
+            print('projections')
             
         self.bottomup_projections = nn.ModuleList(bottomup_projections)
+        self.bottomup_pools = nn.ModuleList(pooling)
+        print('module')
         
         
         # PROJECTIONS FOR TOPDOWN INTERLAYER CONNECTIONS
         topdown_gru_proj = []
+        pooling = []
         for node in range(self.graph.num_node):
             # dimensions of ALL top-down inputs to current node
             #all_input_h = sum([conv_output_size(graph.nodes[i.item()].input_size[0], graph.nodes[i.item()].kernel_size[0]) 
@@ -185,19 +217,26 @@ class Architecture(nn.Module):
             #all_input_w = sum([conv_output_size(graph.nodes[i.item()].input_size[1], graph.nodes[i.item()].kernel_size[1]) 
             #                   for i in self.graph.nodes[node].out_nodes_indices]) + input_sizes[node][1]
             
-            all_input_h = sum([graph.nodes[i.item()].input_size[0] for i in self.graph.nodes[node].out_nodes_indices])
-            all_input_w = sum([graph.nodes[i.item()].input_size[1] for i in self.graph.nodes[node].out_nodes_indices])
-            all_input_dim = sum([graph.nodes[i.item()].input_dim for i in self.graph.nodes[node].out_nodes_indices])
+            all_input_h = [graph.nodes[i.item()].output_size[0] for i in self.graph.nodes[node].out_nodes_indices]
+            all_input_w = [graph.nodes[i.item()].output_size[1] for i in self.graph.nodes[node].out_nodes_indices]
+            all_input_dim = [graph.nodes[i.item()].hidden_dim for i in self.graph.nodes[node].out_nodes_indices]
             
             # dimensions accepted by current node
             target_h, target_w = graph.nodes[node].input_size
             target_c = graph.nodes[node].hidden_dim + graph.nodes[node].input_dim
             
-            proj = nn.Linear(all_input_dim*all_input_h*all_input_w, target_c*target_h*target_w)
+            layer_pool = nn.MaxPool2d(graph.nodes[node].kernel_size, graph.nodes[node].stride, graph.nodes[node].padding)
+            pooling.append(layer_pool)
+            
+            proj = nn.Linear(sum([all_input_dim[i]*all_input_h[i]*all_input_w[i] for i in range(len(all_input_dim))]),
+                             graph.nodes[node].input_dim*target_h*target_w)
             topdown_gru_proj.append(proj)
+            print('topdown projections')
+            
         self.topdown_projections = nn.ModuleList(topdown_gru_proj)
+        self.topdown_pools = nn.ModuleList(pooling)
 
-    def forward(self, all_inputs):
+    def forward(self, all_inputs, batch=True):
         """
         :param a list of tensor of size n, each consisting a input_tensor: (b, t, c, h, w). 
             n as the number of input signals. Order should correspond to self.graph.input_node_indices
@@ -207,7 +246,11 @@ class Architecture(nn.Module):
         #find the time length of the longest input signal + enough extra time for the last input to go through all nodes
         seq_len = max([i.shape[1] for i in all_inputs])
         process_time = seq_len + self.graph.num_node - 1
-        batch_size = all_inputs[0].shape[0]
+        if batch==True:
+            batch_size = all_inputs[0].shape[0]
+        else:
+            batch_size = 1
+            all_inputs = [torch.unsqueeze(inp, 0) for inp in all_inputs]
         hidden_states = self._init_hidden(batch_size=batch_size)
         hidden_states_prev = self._init_hidden(batch_size=batch_size)
         #time = seq_len * self.rep
@@ -220,6 +263,7 @@ class Architecture(nn.Module):
 
                 # Go through each node and see if anything should be processed
                 for node in range(self.graph.num_node):
+                    print('processing')
 
                     # input size is same for all bottomup and topdown input for ease of combining inputs
                     c = self.graph.nodes[node].input_dim
@@ -237,7 +281,7 @@ class Architecture(nn.Module):
 
                     # bottom-up input from other nodes
                     for i, bottomup_node in enumerate(self.graph.nodes[node].in_nodes_indices):
-                        bottomup.append(hidden_states_prev[bottomup_node].flatten(start_dim=1))
+                        bottomup.append(self.bottomup_pools[bottomup_node](hidden_states_prev[bottomup_node]).flatten(start_dim=1))
                         #bottomup.append(hidden_states[bottomup_node])
                     
                     # if there's no new info, skip rest of loop
@@ -254,7 +298,7 @@ class Architecture(nn.Module):
                     topdown = []
 
                     for i, topdown_node in enumerate(self.graph.nodes[node].out_nodes_indices):
-                        topdown.append(hidden_states_prev[topdown_node].flatten(start_dim=1))
+                        topdown.append(self.topdown_pools[topdown_node](hidden_states_prev[topdown_node]).flatten(start_dim=1))
                         #print(topdown[0].shape)
                     
                     if not topdown or torch.count_nonzero(torch.cat(topdown, dim=1)) == 0:

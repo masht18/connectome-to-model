@@ -67,11 +67,9 @@ class ConvGRUTopDownCell(nn.Module):
         update_gate = torch.sigmoid(beta)
            
         if topdown == None:
-            topdown = torch.zeros_like(combined_conv) #TODO: ask
+            topdown = torch.zeros_like(combined)
 
-        a = torch.cat([input_tensor, reset_gate*h_cur], dim=1)
-        b = (F.relu(topdown) + 1)
-        combined =  a*b
+        combined =  torch.cat([input_tensor, reset_gate*h_cur], dim=1) * (F.relu(topdown) + 1)
         cc_cnm = self.conv_can(combined)
         cnm = torch.tanh(cc_cnm)
 

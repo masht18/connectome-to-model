@@ -58,10 +58,10 @@ print(device)
 # # 1: Prepare dataset
 print('Loading datasets')
 
-
+transform = T.Compose([T.Resize((32, 32)), T.ToTensor()])
 MNIST_path='/home/mila/m/mashbayar.tugsbayar/datasets'
-train_data = datasets.MNIST(root=MNIST_path, download=True, train=True, transform=T.ToTensor())
-test_data = datasets.MNIST(root=MNIST_path, download=True, train=False, transform=T.ToTensor())
+train_data = datasets.MNIST(root=MNIST_path, download=True, train=True, transform=transform)
+test_data = datasets.MNIST(root=MNIST_path, download=True, train=False, transform=transform)
 
 # Label references, which help generate sequences (these guys tell you where to look in the dataset if you need a 6, 4, etc)
 mnist_ref_train = generate_label_reference(train_data)

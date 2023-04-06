@@ -183,18 +183,19 @@ class Architecture(nn.Module):
             if end_node in self.graph.input_node_indices:
                 num_inputs += 1
             
-                stride, padding = self.calc_stride_padding(input_sizes[end_node], 
-                                                      graph.nodes[end_node].input_size, 
-                                                      graph.nodes[end_node].kernel_size)
+                #stride, padding = self.calc_stride_padding(input_sizes[end_node], 
+                #                                      graph.nodes[end_node].input_size, 
+                #                                      graph.nodes[end_node].kernel_size)
                 
                 proj = nn.Conv2d(in_channels=input_dims[end_node], 
                                  out_channels=self.proj_hidden_dim,
                                 kernel_size=graph.nodes[end_node].kernel_size,
-                                stride=stride,
-                                padding=padding,
+                                stride=1,
+                                padding=(graph.nodes[end_node].kernel_size[0]-1)//2,
                                 device=device)
                 per_input_projections.append(proj)
             
+            # dealing with the layer-to-layer projections
             for start_node in self.graph.nodes[end_node].in_nodes_indices:
             
                 # calculate convolution dimensions
@@ -218,7 +219,7 @@ class Architecture(nn.Module):
             per_input_projections.append(integrator_conv)
             
             self.bottomup_projections.append(nn.ModuleList(per_input_projections))
-        #print(self.bottomup_projections)
+        print(self.bottomup_projections)
             #self.bottomup_projections = nn.ModuleList(self.bottomup_projections)
         
         
@@ -231,20 +232,22 @@ class Architecture(nn.Module):
             for start_node in self.graph.nodes[end_node].out_nodes_indices:
             
                 # calculate convolution dimensions
-                padding = self.calc_padding_transpose(graph.nodes[start_node].input_size, 
-                                                      graph.nodes[end_node].input_size, 
-                                                      graph.nodes[end_node].kernel_size)
+                #padding = self.calc_padding_transpose(graph.nodes[start_node].input_size, 
+                #                                      graph.nodes[end_node].input_size, 
+                #                                      graph.nodes[end_node].kernel_size)
+                
+                stride = [o//i for o, i in zip(graph.nodes[end_node].input_size, graph.nodes[start_node].input_size)]
                 
                 # projection from single node
                 proj = nn.ConvTranspose2d(in_channels=graph.nodes[start_node].hidden_dim, 
                                  out_channels=self.proj_hidden_dim,
-                                kernel_size=graph.nodes[end_node].kernel_size,
-                                padding=padding, device=device)
+                                kernel_size=stride,
+                                stride=stride, device=device)
                 per_input_projections.append(proj)
             
             # Final conv to integrate all inputs. This convolution does not change shape of image
             integrator_conv = nn.Conv2d(in_channels=self.proj_hidden_dim*num_inputs, 
-                                        out_channels=graph.nodes[end_node].input_dim,
+                                        out_channels=2*graph.nodes[end_node].input_dim,
                                        kernel_size=3, padding=1, device=device)
             per_input_projections.append(integrator_conv)
             
@@ -288,7 +291,7 @@ class Architecture(nn.Module):
                     bottomup = []
                     input_num = 0                             # index of bottomup-input, used to fetch projection convs
                     projs = self.bottomup_projections[node]   # relevant bottom-up projections for this node
-                    print(node)
+                    #print(node)
                     #print(self.graph.input_node_indices)
 
                     # direct stimuli if node receives it + the sequence isn't done
@@ -308,23 +311,23 @@ class Architecture(nn.Module):
                     # Concatenate all inputs and integrate
                     bottomup = torch.cat(bottomup, dim=1)
                     bottomup = projs[-1](bottomup)
-                    print(bottomup.shape)
+                    #print(bottomup.shape)
                     
                     ##################################
                     # Find topdown inputs, assumes every feedforward connection out of node has feedback
                     # Note there's no external topdown input
-                    topdown_projs = self.bottomup_projections[node]
+                    topdown_projs = self.topdown_projections[node]
                     
-                    if self.topdown and t!=0: 
+                    if self.topdown and t!=0 and self.graph.nodes[node].out_nodes_indices.nelement()!=0: 
                         topdown = []
 
                         for i, topdown_node in enumerate(self.graph.nodes[node].out_nodes_indices):
                             topdown.append(topdown_projs[i](hidden_states_prev[topdown_node]))
-                            print(topdown[0].shape)
+                            #print(topdown[0].shape)
                         
                         topdown = topdown_projs[-1](torch.cat(topdown, dim=1))
-                        print(topdown.shape)
-                        print('topdown')
+                        #print(topdown.shape)
+                        #print('topdown')
                             
                     else:  
                         topdown = None # if this is the beginning of sequence, there's no topdown info

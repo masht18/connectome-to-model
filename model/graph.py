@@ -129,16 +129,19 @@ class Graph(object):
         #I think this is not needed but we'll see
 
 class Architecture(nn.Module):
-    def __init__(self, graph, input_sizes, input_dims, topdown=True,
+    def __init__(self, graph, input_sizes, input_dims, topdown=True, stereo=False,
                  output_size=10, dropout=True, dropout_p=0.25, rep=1,
                  proj_hidden_dim=16, device='cuda'):
         '''
-        :param graph (Grapph object)
+        :param graph (Graph object)
             object containing architecture graph
         :param input_sizes (list of tuples)
             list of input sizes (height, width) per node. If a node doesn't receive an outside input, it's (0, 0)
         :param input_dims (list of ints)
             list of input dimension sizes per node. If a node doesn't receive an outside input, it's 0
+        :param topdown (bool)
+        :param stereo (bool or list of bools):
+            if raw inputs to one area are stereo images. NOTE: stereo images are assumed to be equal in size 
         :param dropout (bool)
         :param rep (int)
             time steps to revisit the sequence
@@ -150,6 +153,7 @@ class Architecture(nn.Module):
         self.use_dropout = dropout
         self.dropout = nn.Dropout(dropout_p)
         self.topdown = topdown
+        self.stereo = stereo
         
         self.bottomup_projections = []
         self.topdown_projections = []
@@ -181,19 +185,26 @@ class Architecture(nn.Module):
             
             # if node receives raw input, make a projection layer for that too
             if end_node in self.graph.input_node_indices:
-                num_inputs += 1
-            
-                #stride, padding = self.calc_stride_padding(input_sizes[end_node], 
-                #                                      graph.nodes[end_node].input_size, 
-                #                                      graph.nodes[end_node].kernel_size)
-                
-                proj = nn.Conv2d(in_channels=input_dims[end_node], 
+                if self.stereo:
+                    num_inputs += 2
+                    proj = []
+                    for i in range(2):
+                        proj.append(nn.Conv2d(in_channels=input_dims[end_node], 
+                                 out_channels=self.proj_hidden_dim,
+                                kernel_size=graph.nodes[end_node].kernel_size,
+                                stride=1,
+                                padding=(graph.nodes[end_node].kernel_size[0]-1)//2,
+                                device=device))
+                    per_input_projections.append(nn.ModuleList(proj))
+                else:
+                    num_inputs += 1
+                    proj = nn.Conv2d(in_channels=input_dims[end_node], 
                                  out_channels=self.proj_hidden_dim,
                                 kernel_size=graph.nodes[end_node].kernel_size,
                                 stride=1,
                                 padding=(graph.nodes[end_node].kernel_size[0]-1)//2,
                                 device=device)
-                per_input_projections.append(proj)
+                    per_input_projections.append(proj)
             
             # dealing with the layer-to-layer projections
             for start_node in self.graph.nodes[end_node].in_nodes_indices:
@@ -264,13 +275,16 @@ class Architecture(nn.Module):
         :return: label 
         """
         #find the time length of the longest input signal + enough extra time for the last input to go through all nodes
-        seq_len = max([i.shape[1] for i in all_inputs])
+        seq_len = max([i[0].shape[1] if isinstance(i, list) else i.shape[1] for i in all_inputs])
         process_time = seq_len + self.graph.num_node - 1
+        
         if batch==True:
-            batch_size = all_inputs[0].shape[0]
+            batch_size = all_inputs[0][0].shape[0] if self.stereo else all_inputs[0].shape[0]
         else:
             batch_size = 1
             all_inputs = [torch.unsqueeze(inp, 0) for inp in all_inputs]
+            
+        # init hidden states
         hidden_states = self._init_hidden(batch_size=batch_size)
         hidden_states_prev = self._init_hidden(batch_size=batch_size)
         active_nodes = self.graph.input_node_indices.copy()
@@ -297,7 +311,11 @@ class Architecture(nn.Module):
                     # direct stimuli if node receives it + the sequence isn't done
                     if node in self.graph.input_node_indices and (t < seq_len):
                         inp = all_inputs[self.graph.input_node_indices.index(node)]
-                        bottomup.append(projs[input_num](inp[:, t, :, :, :]))
+                        if self.stereo:
+                            bottomup.append(projs[input_num][0](inp[0][:, t, :, :, :]))
+                            bottomup.append(projs[input_num][1](inp[1][:, t, :, :, :]))
+                        else:
+                            bottomup.append(projs[input_num](inp[:, t, :, :, :]))
                         input_num += 1
 
                     # bottom-up input from other nodes

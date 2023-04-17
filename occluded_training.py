@@ -1,5 +1,5 @@
 '''
-Pared-down training script for testing basic functionality only
+Script for testing models with OSCAR occluded images
 '''
 
 import torch
@@ -41,12 +41,14 @@ parser.add_argument('--topdown_w', type = int, default = 10)
 parser.add_argument('--hidden_dim', type = int, default = 10)
 parser.add_argument('--reps', type = int, default = 1)
 parser.add_argument('--topdown', type = str2bool, default = True)
+parser.add_argument('--stereo', type = str2bool, default = False)
 parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/semibiological_graph.csv')
+#parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/sample_graph.csv')
 parser.add_argument('--connection_decay', type = str, default = 'ones')
 parser.add_argument('--return_bottom_layer', type = str2bool, default = False)
 
-parser.add_argument('--model_save', type = str, default = 'saved_models/omnist_biological.pt')
-parser.add_argument('--results_save', type = str, default = 'results/omnist_bioconnect.npy')
+parser.add_argument('--model_save', type = str, default = 'saved_models/omnist_biological_stereo.pt')
+parser.add_argument('--results_save', type = str, default = 'results/omnist_bioconnect_stereo.npy')
 
 args = vars(parser.parse_args())
 
@@ -61,16 +63,13 @@ print(device)
 print('Loading datasets')
 
 transform = T.Compose([T.Resize((32, 32)), T.ToTensor()])
-MNIST_path='/home/mila/m/mashbayar.tugsbayar/datasets'
-train_data = datasets.MNIST(root=MNIST_path, download=True, train=True, transform=transform)
-test_data = datasets.MNIST(root=MNIST_path, download=True, train=False, transform=transform)
 
-# Label references, which help generate sequences (these guys tell you where to look in the dataset if you need a 6, 4, etc)
-mnist_ref_train = generate_label_reference(train_data)
-mnist_ref_test = generate_label_reference(test_data)
+root = '/network/scratch/m/mashbayar.tugsbayar/datasets/occluded-mnist/osmnist2c'
+train_data = StereoImageFolder(root, train=True, stereo=args['stereo'], transform=T.ToTensor())
+test_data = StereoImageFolder(root, train=False, stereo=args['stereo'], transform=T.ToTensor())
 
-train_loader = DataLoader(train_data, batch_size=32, shuffle=True)
-test_loader = DataLoader(test_data, batch_size=32, shuffle=True)
+train_loader = DataLoader(train_data, batch_size=32, shuffle=True, num_workers=4)
+test_loader = DataLoader(test_data, batch_size=32, shuffle=True, num_workers=4)
 
 connection_strengths = [1, 1, 1, 1] 
 criterion = nn.CrossEntropyLoss()
@@ -78,7 +77,8 @@ criterion = nn.CrossEntropyLoss()
 #connections = torch.tensor([[0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [0, 0, 0, 0]])
 #node_params = [(1, 28, 28, 5, 5), (10, 15, 15, 5, 5), (10, 9, 9, 3, 3), (10, 3, 3, 3, 3)]
 
-# INIT GRAPH
+
+# MODEL DETAILS + INITIALIZE GRAPH
 input_node = [0] # V1
 output_node = 3 #IT
 input_dims = [3, 0, 0, 0]
@@ -88,11 +88,12 @@ graph = Graph(graph_loc, input_nodes=[0], output_node=3)
 
 # INIT MODEL
 model = Architecture(graph, input_sizes, input_dims,
-                    topdown=args['topdown']).cuda().float()
+                     topdown=args['topdown'],
+                     stereo=args['stereo']).cuda().float()
 
 optimizer = optim.Adam(model.parameters())
 
-def test_sequence(dataloader, clean_data, dataset_ref):
+def test_sequence(dataloader, clean_data):
     
     '''
     Inference
@@ -111,19 +112,22 @@ def test_sequence(dataloader, clean_data, dataset_ref):
         for i, data in enumerate(dataloader, 0):
             optimizer.zero_grad()
 
-            imgs, label = data
-            imgs, label = imgs.to(device), label.to(device)
+            if args['stereo']:
+                (img_l, img_r), label = data
+                img_l, img_r, label = img_l.to(device), img_r.to(device), label.to(device)
+                img_l, img_r = torch.unsqueeze(img_l, 1), torch.unsqueeze(img_r, 1)
+                imgs = [img_l, img_r]
+            else:
+                imgs, label = data
+                imgs, label = imgs.to(device), label.to(device)
+                imgs = torch.unsqueeze(imgs, 1)
                 
-            # Generate a sequence that adds up to loaded image    
-            #input_seqs = sequence_gen(imgs, label, clean_data, dataset_ref, seq_style='addition').float()
             # Generate random topdown
             #topdown = torch.rand(imgs.shape[0], input_seqs.shape[1], args['topdown_c'], args['topdown_h'], args['topdown_w']).to(device)
             
             input_list = []
-            imgs = torch.unsqueeze(imgs, 1)
             input_list.append(imgs)
             #input_list.append(topdown)
-
 
             output = model(input_list)
 
@@ -142,18 +146,21 @@ def train_sequence():
     for i, data in enumerate(train_loader, 0):
         optimizer.zero_grad()
             
-        imgs, label = data
-        imgs, label = imgs.to(device), label.to(device)
-
-        #input_seqs = sequence_gen(imgs, label, train_data, mnist_ref_train, seq_style='addition').float()
+        if args['stereo']:
+            (img_l, img_r), label = data
+            img_l, img_r, label = img_l.to(device), img_r.to(device), label.to(device)
+            img_l, img_r = torch.unsqueeze(img_l, 1), torch.unsqueeze(img_r, 1)
+            imgs = [img_l, img_r]
+        else:
+            imgs, label = data
+            imgs, label = imgs.to(device), label.to(device)
+            imgs = torch.unsqueeze(imgs, 1)
 
         # Generate random topdown for testing purposes only
         #topdown = torch.rand(imgs.shape[0], input_seqs.shape[1], args['topdown_c'], args['topdown_h'], args['topdown_w']).to(device)
         
         input_list = []
-        imgs = torch.unsqueeze(imgs, 1)
         input_list.append(imgs)
-        #input_list.append(input_seqs)
         #input_list.append(topdown)
         
         output = model(input_list)
@@ -175,8 +182,8 @@ else:
     print("No pretrained model found. Training new one.")
 
 for epoch in range(args['epochs']):
-    train_acc = test_sequence(train_loader, train_data, mnist_ref_train)
-    val_acc = test_sequence(test_loader, test_data, mnist_ref_test)
+    train_acc = test_sequence(train_loader, train_data)
+    val_acc = test_sequence(test_loader, test_data)
     loss = train_sequence()
     
     printlog = '| epoch {:3d} | running loss {:5.4f} | train accuracy {:1.5f} |val accuracy {:1.5f}'.format(epoch, loss, train_acc, val_acc)

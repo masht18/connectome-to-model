@@ -5,58 +5,63 @@ import torch.nn.functional as F
 import pandas as pd
 import math
 
-#def conv_output_size(input_size, kernel_size, stride=1):
-#    padding = kernel_size[0] // 2
-#    return ((input_size - kernel_size) // stride) + 1
-
 class Node:
-    def __init__(self, index, input_nodes, output_nodes, input_size = (28, 28), output_size = (28, 28),
+    '''
+    Represents a single area. Currently assumes 2D input
+    
+    :param index (int)
+        Node ID as it is in connectome file
+    :param in_nodes_indices (list of int)
+        nodes feeding forward into current node (bottom-up inputs)
+    :param out_nodes_indices (list of int)
+        nodes current node sends value and receives feedback from (topdown inputs)
+        
+    :param input_size (tuple of int)
+        (height, width) of input to node
+    :param input_dim (int)
+        channel dim of input to node
+    :param hidden_dim (int)
+        hidden dim of node
+    :param kernel_size (tuple of int)
+        kernel/receptive field size of node
+        
+    '''
+    def __init__(self, index, input_nodes, output_nodes, input_size = (28, 28),
                  input_dim = 1, hidden_dim = 10, kernel_size = (3,3)):
+        
+        # connectivity params
         self.index = index
-        self.in_nodes_indices = input_nodes #nodes passing values into current node #contains Node index (int)
-        self.out_nodes_indices = output_nodes #nodes being passed with values from current node #contains Node index (int)
-        self.in_strength = [] #connection strengths of in_nodes
-        self.out_strength = [] #connection strength of out_nodes
-        self.rank_list = [-1] #default value. if the Node end up with only -1 as its rank_list element, then 
+        self.in_nodes_indices = input_nodes
+        self.out_nodes_indices = output_nodes
+        #self.in_strength = [] #connection strengths of in_nodes
+        #self.out_strength = [] #connection strength of out_nodes
 
-
-        #cell params
-        self.input_size = input_size #Height and width of input tensor as (height, width).
-        self.output_size = output_size
+        # area params
+        self.input_size = input_size
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.kernel_size = kernel_size
-        self.stride = (self.calc_stride(input_size[0], output_size[0], kernel_size[0]), 
-                      self.calc_stride(input_size[1], output_size[1], kernel_size[1]))
-        self.padding = (self.calc_padding(input_size[0], output_size[0], kernel_size[0], self.stride[0]), 
-                      self.calc_padding(input_size[1], output_size[1], kernel_size[1], self.stride[1]))
              
-
     def __eq__(self, other): 
         return self.index == other.index
-    
-    def calc_stride(self, input_size, output_size, kernel_size):
-        return (input_size - kernel_size) // (output_size - 1)
-
-    def calc_padding(self, input_size, output_size, kernel_size, stride):
-        return ((output_size - 1) * stride + kernel_size - input_size)
-    
-
 
 class Graph(object):
     """ 
-    A brain architecture graph object, directed by default. 
+    Makes connectome graph pbject from csv connectome data file 
     
-    :param connections (n x n)
-        directed binary matrix of connections row --> column 
-    :param connection_strength
+    :param graph_loc (str)
+        location of csv file connectome data file 
+    :param input_nodes (list of int)
+        nodes that receive direct input
+    :param output_nodes (int)
+        node to get readout from
     """
     def __init__(self, graph_loc, input_nodes, output_node, directed=True, bias=False, dtype = torch.cuda.FloatTensor):
         
         graph_df = pd.read_csv(graph_loc)
         self.num_node = graph_df.shape[0]
         self.conn_strength = torch.tensor(graph_df.iloc[:, :self.num_node].values)   # connection_strength_matrix
-        self.conn = self.conn_strength > 0                                           # binary matrix of connections
+        self.conn = self.conn_strength > 0                                           # binary matrix of connections        
         self.node_dims = [row for _, row in graph_df.iterrows()]                     # dimensions of each node/area
         self.nodes = self.generate_node_list(self.conn, self.node_dims)              # turn dataframe into list of graph nodes
         
@@ -68,15 +73,6 @@ class Graph(object):
         self.dtype = dtype
         self.bias = bias
 
-        #for input_node in self.input_node_indices:
-        #    self.rank_node(self.nodes[input_node],self.nodes[self.output_node_index], 0, 0)
-
-        # for node in range (self.num_node):
-            
-        #     print(self.nodes[node].rank_list)
-
-
-
     def generate_node_list(self,connections, node_dims):
         nodes = []
         # initialize node list
@@ -86,13 +82,13 @@ class Graph(object):
             hidden_dim = node_dims[n].hidden_dim
             input_dim = node_dims[n].input_dim
             input_size = (node_dims[n].input_h, node_dims[n].input_w)
-            output_size = (node_dims[n].output_h, node_dims[n].output_w)
+            #output_size = (node_dims[n].output_h, node_dims[n].output_w)
             kernel_size = (node_dims[n].kernel_h, node_dims[n].kernel_w)
            
             node = Node(n, input_nodes, output_nodes, 
                         input_dim=input_dim, 
                         input_size=input_size,
-                        output_size=input_size, 
+                        #output_size=input_size, 
                         hidden_dim=hidden_dim,
                        kernel_size=kernel_size)
             nodes.append(node)
@@ -111,55 +107,53 @@ class Graph(object):
             else:
                 self.rank_node(self.nodes[node], output_node_index, rank_val, num_pass)
 
-    def build_architecture(self):
-        architecture = Architecture(self).cuda().float()
-        return architecture
-
     def find_feedforward_cells(self, node):
         return self.nodes[node].in_nodes_indices
 
     def find_feedback_cells(self, node, t):
         return self.nodes[node].out_nodes_indices
-        # if ((t+1) in self.nodes[n].rank_list):
-        #     in_nodes.append(n)
-        # return in_nodes
 
     def find_longest_path_length(self): #TODO: 
         return 42
         #I think this is not needed but we'll see
 
 class Architecture(nn.Module):
-    def __init__(self, graph, input_sizes, input_dims, topdown=True, stereo=False,
-                 output_size=10, dropout=True, dropout_p=0.25, rep=1,
-                 proj_hidden_dim=16, device='cuda'):
+    def __init__(self, graph, input_sizes, input_dims, output_size=10,
+                 topdown=True, stereo=False,
+                 dropout=True, dropout_p=0.25, rep=1,
+                 proj_hidden_dim=32, device='cuda'):
         '''
         :param graph (Graph object)
-            object containing architecture graph
         :param input_sizes (list of tuples)
             list of input sizes (height, width) per node. If a node doesn't receive an outside input, it's (0, 0)
-        :param input_dims (list of ints)
-            list of input dimension sizes per node. If a node doesn't receive an outside input, it's 0
+        :param output_size (int)
+            size of model output
         :param topdown (bool)
         :param stereo (bool or list of bools):
             if raw inputs to one area are stereo images. NOTE: stereo images are assumed to be equal in size 
         :param dropout (bool)
+        :param dropout_p (float)
+            dropout probability if dropout is enabled
         :param rep (int)
-            time steps to revisit the sequence
+            repetitions, i.e how many times to view the sequence in full
+        :param proj_hidden_dim (int)
+            hyperparam. intermediate dimension of projection convolutions
         '''
         super(Architecture, self).__init__()
+        
+        assert len(input_sizes) == graph.num_node, "Must give sizes of direct stimuli for all nodes. If a node receive direct input, use (0,0)."
+        assert len(input_dims) == graph.num_node, "Must give channels of direct stimuli for all nodes. If a node receive direct input, use 0."
 
         self.graph = graph
-        self.rep = rep # repetition, i.e how many times to view the sequence in full
+        self.rep = rep
         self.use_dropout = dropout
         self.dropout = nn.Dropout(dropout_p)
         self.topdown = topdown
         self.stereo = stereo
+        self.proj_hidden_dim = proj_hidden_dim
         
         self.bottomup_projections = []
         self.topdown_projections = []
-        
-        # intermediate dimension of projection convolutions
-        self.proj_hidden_dim = proj_hidden_dim
         
         # The "brain areas" of the model
         cell_list = []
@@ -172,7 +166,7 @@ class Architecture(nn.Module):
                                          dtype=graph.dtype))
         self.cell_list = nn.ModuleList(cell_list)
         
-        # Dimensionality of output layer
+        # Readout layer
         h, w = self.graph.nodes[self.graph.output_node_index].input_size
         self.fc1 = nn.Linear(h * w * self.graph.nodes[self.graph.output_node_index].hidden_dim, 100) 
         self.fc2 = nn.Linear(100, output_size)
@@ -231,9 +225,7 @@ class Architecture(nn.Module):
             
             self.bottomup_projections.append(nn.ModuleList(per_input_projections))
         print(self.bottomup_projections)
-            #self.bottomup_projections = nn.ModuleList(self.bottomup_projections)
-        
-        
+                
         # PROJECTIONS FOR TOPDOWN INTERLAYER CONNECTIONS        
         for end_node in range(graph.num_node):
             # number of nodes it projects to (i.e everyone it receives feedback from)
@@ -242,11 +234,7 @@ class Architecture(nn.Module):
             
             for start_node in self.graph.nodes[end_node].out_nodes_indices:
             
-                # calculate convolution dimensions
-                #padding = self.calc_padding_transpose(graph.nodes[start_node].input_size, 
-                #                                      graph.nodes[end_node].input_size, 
-                #                                      graph.nodes[end_node].kernel_size)
-                
+                # calculate convolution dimensions                
                 stride = [o//i for o, i in zip(graph.nodes[end_node].input_size, graph.nodes[start_node].input_size)]
                 
                 # projection from single node
@@ -258,7 +246,7 @@ class Architecture(nn.Module):
             
             # Final conv to integrate all inputs. This convolution does not change shape of image
             integrator_conv = nn.Conv2d(in_channels=self.proj_hidden_dim*num_inputs, 
-                                        out_channels=2*graph.nodes[end_node].input_dim,
+                                        out_channels=graph.nodes[end_node].input_dim + graph.nodes[end_node].hidden_dim,
                                        kernel_size=3, padding=1, device=device)
             per_input_projections.append(integrator_conv)
             
@@ -336,7 +324,7 @@ class Architecture(nn.Module):
                     # Note there's no external topdown input
                     topdown_projs = self.topdown_projections[node]
                     
-                    if self.topdown and t!=0 and self.graph.nodes[node].out_nodes_indices.nelement()!=0: 
+                    if self.topdown and (rep != 0 or t!=0) and self.graph.nodes[node].out_nodes_indices.nelement()!=0: 
                         topdown = []
 
                         for i, topdown_node in enumerate(self.graph.nodes[node].out_nodes_indices):
@@ -345,7 +333,7 @@ class Architecture(nn.Module):
                         
                         topdown = topdown_projs[-1](torch.cat(topdown, dim=1))
                         #print(topdown.shape)
-                        #print('topdown')
+                        #print(topdown)
                             
                     else:  
                         topdown = None # if this is the beginning of sequence, there's no topdown info

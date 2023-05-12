@@ -179,6 +179,11 @@ class Architecture(nn.Module):
             
             # if node receives raw input, make a projection layer for that too
             if end_node in self.graph.input_node_indices:
+                # calculate convolution dimensions
+                stride, padding = self.calc_stride_padding(input_sizes[end_node], 
+                                                      graph.nodes[end_node].input_size, 
+                                                      graph.nodes[end_node].kernel_size)
+                
                 if self.stereo:
                     num_inputs += 2
                     proj = []
@@ -186,8 +191,8 @@ class Architecture(nn.Module):
                         proj.append(nn.Conv2d(in_channels=input_dims[end_node], 
                                  out_channels=self.proj_hidden_dim,
                                 kernel_size=graph.nodes[end_node].kernel_size,
-                                stride=1,
-                                padding=(graph.nodes[end_node].kernel_size[0]-1)//2,
+                                stride=stride,
+                                padding=padding,
                                 device=device))
                     per_input_projections.append(nn.ModuleList(proj))
                 else:
@@ -195,14 +200,14 @@ class Architecture(nn.Module):
                     proj = nn.Conv2d(in_channels=input_dims[end_node], 
                                  out_channels=self.proj_hidden_dim,
                                 kernel_size=graph.nodes[end_node].kernel_size,
-                                stride=1,
-                                padding=(graph.nodes[end_node].kernel_size[0]-1)//2,
+                                stride=stride,
+                                padding=padding,
                                 device=device)
                     per_input_projections.append(proj)
             
             # dealing with the layer-to-layer projections
             for start_node in self.graph.nodes[end_node].in_nodes_indices:
-            
+                
                 # calculate convolution dimensions
                 stride, padding = self.calc_stride_padding(graph.nodes[start_node].input_size, 
                                                       graph.nodes[end_node].input_size, 
@@ -293,11 +298,11 @@ class Architecture(nn.Module):
                     bottomup = []
                     input_num = 0                             # index of bottomup-input, used to fetch projection convs
                     projs = self.bottomup_projections[node]   # relevant bottom-up projections for this node
-                    #print(node)
+                    print(node)
                     #print(self.graph.input_node_indices)
 
                     # direct stimuli if node receives it + the sequence isn't done
-                    if node in self.graph.input_node_indices and (t < seq_len):
+                    if node in self.graph.input_node_indices and t < seq_len:
                         inp = all_inputs[self.graph.input_node_indices.index(node)]
                         if self.stereo:
                             bottomup.append(projs[input_num][0](inp[0][:, t, :, :, :]))
@@ -305,7 +310,7 @@ class Architecture(nn.Module):
                         else:
                             bottomup.append(projs[input_num](inp[:, t, :, :, :]))
                         input_num += 1
-
+                        
                     # bottom-up input from other nodes
                     for i, bottomup_node in enumerate(self.graph.nodes[node].in_nodes_indices):
                         bottomup.append(projs[input_num](hidden_states_prev[bottomup_node]))
@@ -315,9 +320,10 @@ class Architecture(nn.Module):
                         continue
                     
                     # Concatenate all inputs and integrate
+                    for i in range(len(bottomup)):
+                        print(bottomup[i].shape)
                     bottomup = torch.cat(bottomup, dim=1)
                     bottomup = projs[-1](bottomup)
-                    #print(bottomup.shape)
                     
                     ##################################
                     # Find topdown inputs, assumes every feedforward connection out of node has feedback
@@ -347,10 +353,20 @@ class Architecture(nn.Module):
                         h = self.dropout(h)
                     hidden_states[node] = h
                     
-                    # flag the areas to process in next iteration
-                    for next_node in self.graph.nodes[node].out_nodes_indices:
-                        active_nodes.append(next_node)
-                    
+                # flag the areas to process in next iteration
+                old_nodes = active_nodes
+                active_nodes = []
+                for prev_node in old_nodes:
+                    for next_node in self.graph.nodes[prev_node].out_nodes_indices:
+                        active_nodes.append(next_node.item())
+                        
+                # flag direct input areas too if the sequence is not fully seen yet        
+                for inp_idx, seq in enumerate(all_inputs): 
+                    if t + 1 < seq.shape[1]:
+                        print(seq.shape)
+                        active_nodes.append(self.graph.input_node_indices[inp_idx])
+                
+                # copy hidden state
                 hidden_states_prev = hidden_states
 
         pred = self.fc1(F.relu(torch.flatten(hidden_states[self.graph.output_node_index], start_dim=1)))

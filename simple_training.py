@@ -34,19 +34,16 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--cuda', type = bool, default = True, help = 'use gpu or not')
 parser.add_argument('--epochs', type = int, default = 50)
-parser.add_argument('--layers', type = int, default = 1)
-parser.add_argument('--topdown_c', type = int, default = 10)
-parser.add_argument('--topdown_h', type = int, default = 10)
-parser.add_argument('--topdown_w', type = int, default = 10)
 parser.add_argument('--hidden_dim', type = int, default = 10)
 parser.add_argument('--reps', type = int, default = 1)
 parser.add_argument('--topdown', type = str2bool, default = True)
-parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/semibiological_graph.csv')
-parser.add_argument('--connection_decay', type = str, default = 'ones')
+parser.add_argument('--topdown_type', type = str, default = 'multiplicative')
+parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/topdown_test_decreasing.csv')
+#parser.add_argument('--connection_decay', type = str, default = 'ones')
 parser.add_argument('--return_bottom_layer', type = str2bool, default = False)
 
-parser.add_argument('--model_save', type = str, default = 'saved_models/omnist_biological.pt')
-parser.add_argument('--results_save', type = str, default = 'results/omnist_bioconnect.npy')
+parser.add_argument('--model_save', type = str, default = 'saved_models/topdown_test_dec_comp.pt')
+parser.add_argument('--results_save', type = str, default = 'results/topdown_tests/topdown_only_upsamplingILC_comp.npy')
 
 args = vars(parser.parse_args())
 
@@ -72,25 +69,28 @@ mnist_ref_test = generate_label_reference(test_data)
 train_loader = DataLoader(train_data, batch_size=32, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=32, shuffle=True)
 
-connection_strengths = [1, 1, 1, 1] 
 criterion = nn.CrossEntropyLoss()
 
 #connections = torch.tensor([[0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1], [0, 0, 0, 0]])
 #node_params = [(1, 28, 28, 5, 5), (10, 15, 15, 5, 5), (10, 9, 9, 3, 3), (10, 3, 3, 3, 3)]
 
 # INIT GRAPH
-input_node = [0] # V1
-output_node = 3 #IT
-input_dims = [3, 0, 0, 0]
-input_sizes = [(32, 32), (0, 0), (0, 0), (0, 0)]
+input_nodes = [0, 2] # V1
+output_node = 1 #IT
+input_dims = [1, 0, 1]
+input_sizes = [(32, 32), (0, 0), (32, 32)]
 graph_loc = args['graph_loc']
-graph = Graph(graph_loc, input_nodes=[0], output_node=3)
+graph = Graph(graph_loc, input_nodes=input_nodes, output_node=output_node)
 
 # INIT MODEL
 model = Architecture(graph, input_sizes, input_dims,
-                    topdown=args['topdown']).cuda().float()
+                    topdown=args['topdown'],
+                    topdown_type=args['topdown_type']).cuda().float()
 
-optimizer = optim.Adam(model.parameters())
+optimizer = optim.Adam(model.parameters(), lr=0.0001)
+model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+params = sum([np.prod(p.size()) for p in model_parameters])
+print(params)
 
 def test_sequence(dataloader, clean_data, dataset_ref):
     
@@ -115,14 +115,15 @@ def test_sequence(dataloader, clean_data, dataset_ref):
             imgs, label = imgs.to(device), label.to(device)
                 
             # Generate a sequence that adds up to loaded image    
-            #input_seqs = sequence_gen(imgs, label, clean_data, dataset_ref, seq_style='addition').float()
+            input_seqs = sequence_gen(imgs, label, clean_data, dataset_ref, seq_style='addition').float()
             # Generate random topdown
             #topdown = torch.rand(imgs.shape[0], input_seqs.shape[1], args['topdown_c'], args['topdown_h'], args['topdown_w']).to(device)
             
-            input_list = []
-            imgs = torch.unsqueeze(imgs, 1)
-            input_list.append(imgs)
+            input_list = [torch.unsqueeze(input_seqs[:, 0], 1), torch.unsqueeze(input_seqs[:, 2], 1)]
+            #imgs = torch.unsqueeze(imgs, 1)
+            #input_list.append(imgs)
             #input_list.append(topdown)
+            #input_list.append(input_seqs)
 
 
             output = model(input_list)
@@ -145,14 +146,14 @@ def train_sequence():
         imgs, label = data
         imgs, label = imgs.to(device), label.to(device)
 
-        #input_seqs = sequence_gen(imgs, label, train_data, mnist_ref_train, seq_style='addition').float()
+        input_seqs = sequence_gen(imgs, label, train_data, mnist_ref_train, seq_style='addition').float()
 
         # Generate random topdown for testing purposes only
         #topdown = torch.rand(imgs.shape[0], input_seqs.shape[1], args['topdown_c'], args['topdown_h'], args['topdown_w']).to(device)
         
-        input_list = []
-        imgs = torch.unsqueeze(imgs, 1)
-        input_list.append(imgs)
+        input_list = [torch.unsqueeze(input_seqs[:, 0], 1), torch.unsqueeze(input_seqs[:, 2], 1)]
+        #imgs = torch.unsqueeze(imgs, 1)
+        #input_list.append(imgs)
         #input_list.append(input_seqs)
         #input_list.append(topdown)
         

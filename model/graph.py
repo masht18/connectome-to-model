@@ -366,14 +366,8 @@ class Architecture(nn.Module):
 
                         for i, topdown_node in enumerate(self.graph.nodes[node].out_nodes_indices):
                             topdown.append(topdown_projs[i](hidden_states_prev[topdown_node]))
-                            print(node)
-                            print(hidden_states_prev[topdown_node].shape)
-                            print(topdown_node)
-                            print(topdown[i].shape)
                         
                         topdown = topdown_projs[-1](torch.cat(topdown, dim=1))
-                        #print(topdown.shape)
-                        #print(topdown)
                             
                     else:  
                         topdown = None # if this is the beginning of sequence, there's no topdown info

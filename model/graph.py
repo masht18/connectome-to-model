@@ -64,6 +64,7 @@ class Graph(object):
         self.conn = self.conn_strength > 0                                           # binary matrix of connections        
         self.node_dims = [row for _, row in graph_df.iterrows()]                     # dimensions of each node/area
         self.nodes = self.generate_node_list(self.conn, self.node_dims)              # turn dataframe into list of graph nodes
+        #self.longest_path_length = self.find_longest_path()
         
         self.input_node_indices = input_nodes
         self.output_node_index = output_node
@@ -112,10 +113,27 @@ class Graph(object):
 
     def find_feedback_cells(self, node, t):
         return self.nodes[node].out_nodes_indices
+    
+    def find_longest_path_length(self):
+        visited = []
+        for node in self.nodes:
+            if node.index not in self.visited:
+                self.dfs(node, 0)
 
-    def find_longest_path_length(self): #TODO: 
-        return 42
-        #I think this is not needed but we'll see
+        return self.longest_path_length
+
+    def dfs(self, node, current_length): # depth-first search (DFS) traversal of the graph
+        self.visited.add(node.index)
+        current_length += 1
+
+        for out_node in node.output_nodes:
+            if out_node.index not in self.visited:
+                self.dfs(out_node, current_length)
+
+        if current_length > self.longest_path_length:
+            self.longest_path_length = current_length
+
+        self.visited.remove(node.index)
 
 class Architecture(nn.Module):
     def __init__(self, graph, input_sizes, input_dims, 
@@ -249,9 +267,12 @@ class Architecture(nn.Module):
                 # upsample
                 if top_size[0]*top_size[1] < bottom_size[0]*bottom_size[1]:
                     stride = [o//i for o, i in zip(bottom_size, top_size)]
-                    proj = ILC_upsampler(in_channel=graph.nodes[start_node].hidden_dim,
-                                         out_channel=self.proj_hidden_dim,
-                                        stride=stride, device=device)
+                    #proj = ILC_upsampler(in_channel=graph.nodes[start_node].hidden_dim,
+                    #                     out_channel=self.proj_hidden_dim,
+                    #                    stride=stride, device=device)
+                    proj = nn.ConvTranspose2d(in_channels=graph.nodes[start_node].hidden_dim,
+                                         out_channels=self.proj_hidden_dim,
+                                              kernel_size=stride, stride=stride, device=device)
                 else: # or downsample
                     stride, padding = self.calc_stride_padding(top_size, bottom_size, 
                                                       graph.nodes[start_node].kernel_size)
@@ -345,11 +366,8 @@ class Architecture(nn.Module):
 
                         for i, topdown_node in enumerate(self.graph.nodes[node].out_nodes_indices):
                             topdown.append(topdown_projs[i](hidden_states_prev[topdown_node]))
-                            #print(topdown[i].shape)
                         
                         topdown = topdown_projs[-1](torch.cat(topdown, dim=1))
-                        #print(topdown.shape)
-                        #print(topdown)
                             
                     else:  
                         topdown = None # if this is the beginning of sequence, there's no topdown info
@@ -371,9 +389,9 @@ class Architecture(nn.Module):
                         active_nodes.append(next_node.item())
                         
                 # flag direct input areas too if the sequence is not fully seen yet        
-                for inp_idx, seq in enumerate(all_inputs): 
-                    if t + 1 < seq.shape[1]:
-                        print(seq.shape)
+                for inp_idx, seq in enumerate(all_inputs):
+                    seq_shape = seq.shape[0][1] if self.stereo else seq.shape[1]
+                    if t + 1 < seq_shape:
                         active_nodes.append(self.graph.input_node_indices[inp_idx])
                 
                 # copy hidden state

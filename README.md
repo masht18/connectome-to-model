@@ -18,12 +18,12 @@ The following is an example for simple A-->B-->C connectome graph.
 | 0 | 0 | 0 |     10     |    10    |    32   |     32     |    3      |     3     |     0     |     1     |
 
  In addition to connectivity data, tunable parameters for each area include:
--**hidden_dim:** relative size of area
--**kernel_h/w:** receptive field size of area
--**input_dim:** relative size of bottom-up inputs to area
--**basal_topdown_dim:** relative size of basal top-down inputs to the area
--**apical_topdown_dim:** relative size of threshold-shifting top-down inputs to the area
--**input h/w:** height and width of input to area
+- **hidden_dim:** relative size of area
+- **kernel_h/w:** receptive field size of area
+- **input_dim:** relative size of bottom-up inputs to area
+- **basal_topdown_dim:** relative size of basal top-down inputs to the area
+- **apical_topdown_dim:** relative size of threshold-shifting top-down inputs to the area
+- **input h/w:** height and width of input to area
 
 For more information on the different top-down mechanisms, refer to S1.
 

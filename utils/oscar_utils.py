@@ -29,7 +29,7 @@ def pil_loader(path):
 		img = Image.open(f)
 		return img.convert('RGB')
 
-class StereoImage(Dataset):
+class StereoImageFolder(Dataset):
 	"""Imports OSCAR stereo images as two seperate input images"""
 
 	def __init__(self, root_dir, train, stereo=False, loader=pil_loader, transform=None, target_transform=None, nhot_targets=False):

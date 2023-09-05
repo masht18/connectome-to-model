@@ -34,21 +34,18 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--cuda', type = bool, default = True, help = 'use gpu or not')
 parser.add_argument('--epochs', type = int, default = 50)
-parser.add_argument('--layers', type = int, default = 1)
-parser.add_argument('--topdown_c', type = int, default = 10)
-parser.add_argument('--topdown_h', type = int, default = 10)
-parser.add_argument('--topdown_w', type = int, default = 10)
 parser.add_argument('--hidden_dim', type = int, default = 10)
+parser.add_argument('--batch_size', type = int, default = 100)
 parser.add_argument('--reps', type = int, default = 1)
 parser.add_argument('--topdown', type = str2bool, default = True)
+parser.add_argument('--topdown_type', type = str, default = 'multiplicative')
 parser.add_argument('--stereo', type = str2bool, default = False)
-parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/semibiological_graph.csv')
-#parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/sample_graph.csv')
+parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/graphs/mnist/semibio_mult.csv')
 parser.add_argument('--connection_decay', type = str, default = 'ones')
 parser.add_argument('--return_bottom_layer', type = str2bool, default = False)
 
-parser.add_argument('--model_save', type = str, default = 'saved_models/omnist_biological_stereo.pt')
-parser.add_argument('--results_save', type = str, default = 'results/omnist_bioconnect_stereo.npy')
+parser.add_argument('--model_save', type = str, default = 'saved_models/omnist_test_r.pt')
+parser.add_argument('--results_save', type = str, default = 'results/test_omnist.npy')
 
 args = vars(parser.parse_args())
 
@@ -68,8 +65,8 @@ root = '/network/scratch/m/mashbayar.tugsbayar/datasets/occluded-mnist/osmnist2c
 train_data = StereoImageFolder(root, train=True, stereo=args['stereo'], transform=T.ToTensor())
 test_data = StereoImageFolder(root, train=False, stereo=args['stereo'], transform=T.ToTensor())
 
-train_loader = DataLoader(train_data, batch_size=32, shuffle=True, num_workers=4)
-test_loader = DataLoader(test_data, batch_size=32, shuffle=True, num_workers=4)
+train_loader = DataLoader(train_data, batch_size=args['batch_size'], shuffle=True, num_workers=4)
+test_loader = DataLoader(test_data, batch_size=args['batch_size'], shuffle=True, num_workers=4)
 
 connection_strengths = [1, 1, 1, 1] 
 criterion = nn.CrossEntropyLoss()
@@ -89,7 +86,8 @@ graph = Graph(graph_loc, input_nodes=[0], output_node=3)
 # INIT MODEL
 model = Architecture(graph, input_sizes, input_dims,
                      topdown=args['topdown'],
-                     stereo=args['stereo']).cuda().float()
+                     stereo=args['stereo'],
+                    rep=args['reps']).cuda().float()
 
 optimizer = optim.Adam(model.parameters())
 

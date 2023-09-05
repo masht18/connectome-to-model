@@ -37,13 +37,12 @@ parser.add_argument('--epochs', type = int, default = 50)
 parser.add_argument('--hidden_dim', type = int, default = 10)
 parser.add_argument('--reps', type = int, default = 1)
 parser.add_argument('--topdown', type = str2bool, default = True)
-parser.add_argument('--topdown_type', type = str, default = 'multiplicative')
-parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/topdown_test_decreasing.csv')
+parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/graphs/test/topdown_test_mult_only.csv')
 #parser.add_argument('--connection_decay', type = str, default = 'ones')
 parser.add_argument('--return_bottom_layer', type = str2bool, default = False)
 
-parser.add_argument('--model_save', type = str, default = 'saved_models/topdown_test_dec_comp.pt')
-parser.add_argument('--results_save', type = str, default = 'results/topdown_tests/topdown_only_upsamplingILC_comp.npy')
+parser.add_argument('--model_save', type = str, default = 'saved_models/topdowna.pt')
+parser.add_argument('--results_save', type = str, default = 'results/topdown_tests/topdown_only_noupsampling_mult.npy')
 
 args = vars(parser.parse_args())
 
@@ -84,10 +83,9 @@ graph = Graph(graph_loc, input_nodes=input_nodes, output_node=output_node)
 
 # INIT MODEL
 model = Architecture(graph, input_sizes, input_dims,
-                    topdown=args['topdown'],
-                    topdown_type=args['topdown_type']).cuda().float()
+                    topdown=args['topdown']).cuda().float()
 
-optimizer = optim.Adam(model.parameters(), lr=0.0001)
+optimizer = optim.Adam(model.parameters(), lr=0.00001)
 model_parameters = filter(lambda p: p.requires_grad, model.parameters())
 params = sum([np.prod(p.size()) for p in model_parameters])
 print(params)

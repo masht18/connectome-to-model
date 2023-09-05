@@ -69,7 +69,7 @@ class Graph(object):
         self.node_dims = [row for _, row in graph_df.iterrows()]                     # dimensions of each node/area
         self.nodes = self.generate_node_list(self.conn, self.node_dims)              # turn dataframe into list of graph nodes
         #self.longest_path_length = self.find_longest_path()
-        
+
         self.input_node_indices = input_nodes
         self.output_node_index = output_node
 
@@ -77,6 +77,12 @@ class Graph(object):
 
         self.dtype = dtype
         self.bias = bias
+
+        #creates an empty set called visited to keep track of the nodes that have been visited during the depth-first search (DFS) traversal of the graph 
+        self.visited = set() #a list of int (node indicies)
+        self.longest_path_length = 0
+        self.longest_path_length = self.find_longest_path_length()
+        
 
     def generate_node_list(self,connections, node_dims):
         nodes = []
@@ -118,7 +124,7 @@ class Graph(object):
     def find_feedforward_cells(self, node):
         return self.nodes[node].in_nodes_indices
 
-    def find_feedback_cells(self, node, t):
+    def find_feedback_cells(self, node, t): 
         return self.nodes[node].out_nodes_indices
     
     def find_input_sizes(self):
@@ -151,14 +157,21 @@ class Graph(object):
         self.visited.add(node.index)
         current_length += 1
 
-        for out_node in node.output_nodes:
-            if out_node.index not in self.visited:
-                self.dfs(out_node, current_length)
+        for out_node_index in node.out_nodes_indices:
+            if out_node_index not in self.visited:
+                self.dfs(self.nodes[out_node_index], current_length)
 
         if current_length > self.longest_path_length:
             self.longest_path_length = current_length
 
         self.visited.remove(node.index)
+
+    def find_longest_path_length(self):
+        for node in self.nodes:
+            if node.index not in self.visited:
+                self.dfs(node, 0)
+
+        return self.longest_path_length
 
 class Architecture(nn.Module):
     def __init__(self, graph, input_sizes, input_dims, 
@@ -457,4 +470,3 @@ class Architecture(nn.Module):
         padding = [math.ceil((o-i+k-1)/2) for i, o, k in zip(input_sz, output_sz, kernel_sz)]
         
         return padding
-        

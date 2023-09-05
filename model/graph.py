@@ -89,7 +89,6 @@ class Graph(object):
             basal_topdown_dim=node_dims[n].basal_topdown_dim
             apical_topdown_dim=node_dims[n].apical_topdown_dim
             input_size = (node_dims[n].input_h, node_dims[n].input_w)
-            #output_size = (node_dims[n].output_h, node_dims[n].output_w)
             kernel_size = (node_dims[n].kernel_h, node_dims[n].kernel_w)
            
             node = Node(n, input_nodes, output_nodes, 
@@ -99,6 +98,7 @@ class Graph(object):
                         apical_topdown_dim=apical_topdown_dim, 
                         hidden_dim=hidden_dim,
                        kernel_size=kernel_size)
+            print(node.hidden_dim)
             nodes.append(node)
             
         return nodes
@@ -121,7 +121,25 @@ class Graph(object):
     def find_feedback_cells(self, node, t):
         return self.nodes[node].out_nodes_indices
     
-    def find_longest_path_length(self):
+    def find_input_sizes(self):
+        input_szs = []
+        for node in self.nodes:
+            if node.index in self.input_node_indices:
+                input_szs.append(node.input_size)
+            else:
+                input_szs.append((0,0))
+        return input_szs
+    
+    def find_input_dims(self):
+        input_dims = []
+        for node in self.nodes:
+            if node.index in self.input_node_indices:
+                input_dims.append(node.input_dim)
+            else:
+                input_dims.append(0)
+        return input_dims
+    
+    def find_longest_path(self):
         visited = []
         for node in self.nodes:
             if node.index not in self.visited:
@@ -211,10 +229,11 @@ class Architecture(nn.Module):
             # if node receives raw input, make a projection layer for that too
             if end_node in self.graph.input_node_indices:
                 # calculate convolution dimensions
+                print(end_node)
                 stride, padding = self.calc_stride_padding(input_sizes[end_node], 
                                                       graph.nodes[end_node].input_size, 
                                                       graph.nodes[end_node].kernel_size)
-                
+              
                 if self.stereo:
                     num_inputs += 2
                     proj = []
@@ -275,12 +294,12 @@ class Architecture(nn.Module):
                 # upsample
                 if top_size[0]*top_size[1] < bottom_size[0]*bottom_size[1]:
                     stride = [o//i for o, i in zip(bottom_size, top_size)]
-                    proj = ILC_upsampler(in_channel=graph.nodes[start_node].hidden_dim,
-                                         out_channel=self.proj_hidden_dim,
-                                        stride=stride, device=device)
-                    #proj = nn.ConvTranspose2d(in_channels=graph.nodes[start_node].hidden_dim,
-                    #                     out_channels=self.proj_hidden_dim,
-                    #                          kernel_size=stride, stride=stride, device=device)
+                    #proj = ILC_upsampler(in_channel=graph.nodes[start_node].hidden_dim,
+                    #                     out_channel=self.proj_hidden_dim,
+                    #                    stride=stride, device=device)
+                    proj = nn.ConvTranspose2d(in_channels=graph.nodes[start_node].hidden_dim,
+                                         out_channels=self.proj_hidden_dim,
+                                              kernel_size=stride, stride=stride, device=device)
                 else: # or downsample
                     stride, padding = self.calc_stride_padding(top_size, bottom_size, 
                                                       graph.nodes[start_node].kernel_size)
@@ -311,7 +330,7 @@ class Architecture(nn.Module):
         """
         #find the time length of the longest input signal + enough extra time for the last input to go through all nodes
         seq_len = max([i[0].shape[1] if isinstance(i, list) else i.shape[1] for i in all_inputs])
-        process_time = seq_len + self.graph.num_node - 2
+        process_time = seq_len + self.graph.output_node_index - 1
         
         if batch==True:
             batch_size = all_inputs[0][0].shape[0] if self.stereo else all_inputs[0].shape[0]
@@ -333,15 +352,12 @@ class Architecture(nn.Module):
 
                 # Go through each node and see if anything should be processed
                 for node in active_nodes:
-                    #print('processing')
 
                     ########################################
                     # Find bottomup inputs
                     bottomup = []
                     input_num = 0                             # index of bottomup-input, used to fetch projection convs
                     projs = self.bottomup_projections[node]   # relevant bottom-up projections for this node
-                    #print(node)
-                    #print(self.graph.input_node_indices)
 
                     # direct stimuli if node receives it + the sequence isn't done
                     if node in self.graph.input_node_indices and t < seq_len:
@@ -351,6 +367,13 @@ class Architecture(nn.Module):
                             bottomup.append(projs[input_num][1](inp[1][:, t, :, :, :]))
                         else:
                             bottomup.append(projs[input_num](inp[:, t, :, :, :]))
+                        input_num += 1
+                    elif node in self.graph.input_node_indices: #if input is finished, but bottomup processing is still going (network is ruminating)
+                        if self.stereo:
+                            bottomup.append(projs[input_num][0](torch.zeros_like(inp[:, 0, :, :, :])))
+                            bottomup.append(projs[input_num][1](torch.zeros_like(inp[:, 0, :, :, :])))
+                        else:
+                            bottomup.append(projs[input_num](torch.zeros_like(inp[:, 0, :, :, :])))
                         input_num += 1
                         
                     # bottom-up input from other nodes
@@ -399,7 +422,8 @@ class Architecture(nn.Module):
                 active_nodes = []
                 for prev_node in old_nodes:
                     for next_node in self.graph.nodes[prev_node].out_nodes_indices:
-                        active_nodes.append(next_node.item())
+                        if next_node not in active_nodes:
+                            active_nodes.append(next_node.item())
                         
                 # flag direct input areas too if the sequence is not fully seen yet        
                 for inp_idx, seq in enumerate(all_inputs):
@@ -425,15 +449,12 @@ class Architecture(nn.Module):
         
         stride = [math.ceil((i - k) / (o - 1)) for i, o, k in zip(input_sz, output_sz, kernel_sz)]
         padding = [math.ceil(((o - 1)*s + k - i)/2) for i, o, k, s in zip(input_sz, output_sz, kernel_sz, stride)]
-        #print(stride)
-        #print(padding)
         
         return stride, padding
     
     def calc_padding_transpose(self, input_sz, output_sz, kernel_sz):
         
         padding = [math.ceil((o-i+k-1)/2) for i, o, k in zip(input_sz, output_sz, kernel_sz)]
-        #print(padding)
         
         return padding
         

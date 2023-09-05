@@ -61,6 +61,7 @@ args = vars(parser.parse_args())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Seed for reproducibility
 torch.manual_seed(args['seed'])
+torch.set_num_threads(1)
 print(device)
 
 # %% [markdown]
@@ -98,9 +99,9 @@ control_testset = AudioVisualDataset(None, None, cache_dir=amb_mismatch_root, sp
 #control_testset = AudioVisualDataset(None, None, cache_dir=audio_only_root, split='test')
     
 trainloader = DataLoader(trainset, batch_size=32, shuffle=True, num_workers=2)
-match_testloader = DataLoader(match_testset, batch_size=32, shuffle=False, num_workers=2)
-mismatch_testloader = DataLoader(mismatch_testset, batch_size=32, shuffle=False, num_workers=2) 
-control_testloader = DataLoader(control_testset, batch_size=32, shuffle=False, num_workers=2) 
+match_testloader = DataLoader(match_testset, batch_size=32, shuffle=False, num_workers=4)
+mismatch_testloader = DataLoader(mismatch_testset, batch_size=32, shuffle=False, num_workers=4) 
+control_testloader = DataLoader(control_testset, batch_size=32, shuffle=False, num_workers=4) 
 
 def test_sequence(dataloader, align_to='image'):
     total = 0

@@ -104,7 +104,6 @@ class Graph(object):
                         apical_topdown_dim=apical_topdown_dim, 
                         hidden_dim=hidden_dim,
                        kernel_size=kernel_size)
-            print(node.hidden_dim)
             nodes.append(node)
             
         return nodes
@@ -242,7 +241,6 @@ class Architecture(nn.Module):
             # if node receives raw input, make a projection layer for that too
             if end_node in self.graph.input_node_indices:
                 # calculate convolution dimensions
-                print(end_node)
                 stride, padding = self.calc_stride_padding(input_sizes[end_node], 
                                                       graph.nodes[end_node].input_size, 
                                                       graph.nodes[end_node].kernel_size)
@@ -269,6 +267,7 @@ class Architecture(nn.Module):
                     per_input_projections.append(proj)
             
             # dealing with the layer-to-layer projections
+
             for start_node in self.graph.nodes[end_node].in_nodes_indices:
                 
                 # calculate convolution dimensions
@@ -292,7 +291,7 @@ class Architecture(nn.Module):
             per_input_projections.append(integrator_conv)
             
             self.bottomup_projections.append(nn.ModuleList(per_input_projections))
-        print(self.bottomup_projections)
+        #print(self.bottomup_projections)
                 
         # PROJECTIONS FOR TOPDOWN INTERLAYER CONNECTIONS        
         for end_node in range(graph.num_node):
@@ -332,7 +331,7 @@ class Architecture(nn.Module):
             self.topdown_projections.append(nn.ModuleList(per_input_projections))
             #self.topdown_projections = nn.ModuleList(self.topdown_projections)
             
-        print(self.topdown_projections)
+        #print(self.topdown_projections)
 
     def forward(self, all_inputs, batch=True):
         """

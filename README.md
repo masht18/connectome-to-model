@@ -3,7 +3,23 @@ Code base to convert csv connectome file into top-down and laterally recurrent a
 
 ## 2 Installation
 
-TK
+Follow the following steps to install the toolbox.
+​
+### Installation requirements
+​
+To set up a conda environment containing all of the packages supporting our toolbox (replace newenv with the prefered name for your environment if needed):
+```  
+conda create -n newenv scipy matplotlib pandas
+conda activate newenv
+pip3 install torch torchvision torchaudio
+```
+​
+You can get started by installing the toolbox from the source repository with:
+​
+```  
+git clone https://github.com/masht18/convgru_feedback.git
+cd convgru_feedback
+```
 
 ## 3 Connectome file
 

@@ -68,19 +68,6 @@ print(device)
 # # 1: Prepare dataset
 print('Loading datasets')
 
-# Create dataloaders
-#transform = T.Resize((32, 32))
-#amb_trainset = DatasetTriplet('/network/scratch/m/mashbayar.tugsbayar/datasets/amnistV5', split='train', transform=transform)
-#amb_testset = DatasetTriplet('/network/scratch/m/mashbayar.tugsbayar/datasets/amnistV5', split='test', transform=transform)
-#amb_trainloader = DataLoader(amb_trainset, batch_size=64, shuffle=True)
-#amb_testloader = DataLoader(amb_testset, batch_size=64, shuffle=True)
-
-# FSDD dataset in case of audio topdown
-#audio_ds = hub.load("hub://activeloop/spoken_mnist")
-#mel_ds = MELDataset(audio_ds)
-#audio_ref = generate_label_reference(audio_ds, dataset_type='fsdd')
-
-
 def load_mixed_dataset(split, *root):
     datasets = [AudioVisualDataset(None, None, cache_dir=cache_dir, split=split) for cache_dir in root]
     combined = ConcatDataset(datasets)
@@ -92,11 +79,9 @@ amb_mismatch_root='/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_amb_mism
 audio_only_root='/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_audio_only'
     
 trainset = load_mixed_dataset('train', amb_match_root, clean_mismatch_root)
-#trainset = AudioVisualDataset(None, None, cache_dir=audio_only_root, split='train')
 match_testset = AudioVisualDataset(None, None, cache_dir=amb_match_root, split='test')
 mismatch_testset = AudioVisualDataset(None, None, cache_dir=clean_mismatch_root, split='test')
 control_testset = AudioVisualDataset(None, None, cache_dir=amb_mismatch_root, split='test')
-#control_testset = AudioVisualDataset(None, None, cache_dir=audio_only_root, split='test')
     
 trainloader = DataLoader(trainset, batch_size=32, shuffle=True, num_workers=2)
 match_testloader = DataLoader(match_testset, batch_size=32, shuffle=False, num_workers=4)
@@ -118,9 +103,6 @@ def test_sequence(dataloader, align_to='image'):
             _, predicted = torch.max(output.data, 1)
             total += label.size(0)
             correct += (predicted == label).sum().item()
-
-    #print('Accuracy of the network on the 10000 test images: %d %%' % (
-    #    100 * correct / total))
     
     return correct/total
 
@@ -141,36 +123,30 @@ def train_sequence(align_to='image'):
             
         loss = criterion(output, label)
         running_loss += loss.item()
-        #test_acc.append(test_sequence(amb_testloader))
             
         loss.backward()
         optimizer.step()
     
     return running_loss, test_acc
 
-criterion = nn.CrossEntropyLoss()
 # INIT GRAPH
-#input_nodes = [0, 2] # V1
-#output_node = 1 #IT
-#input_dims = [1, 0, 1]
-#input_sizes = [(32, 32), (0, 0), (32, 32)]
 input_nodes = [0, 4] # V1, A1
 output_node = 3 #IT
 graph_loc = args['graph_loc']
 graph = Graph(graph_loc, input_nodes=input_nodes, output_node=output_node)
 input_sizes = graph.find_input_sizes()
 input_dims = graph.find_input_dims()
-input_dims[4] = 1
-print(input_dims)
 
 # INIT MODEL
 model = Architecture(graph, input_sizes, input_dims,
                     topdown=args['topdown']).cuda().float()
 
 optimizer = optim.Adam(model.parameters(), lr=0.001)
-model_parameters = filter(lambda p: p.requires_grad, model.parameters())
-params = sum([np.prod(p.size()) for p in model_parameters])
-print(params)
+criterion = nn.CrossEntropyLoss()
+
+#model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+#params = sum([np.prod(p.size()) for p in model_parameters])
+#print(params)
 
 losses = {'loss': [], 'train_acc': [], 'amb_match_acc': [], 'clean_mismatch_acc': [], 'ambimg_acc': [], 'ambimg_audio_align': []}    
 

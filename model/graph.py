@@ -177,8 +177,7 @@ class Graph(object):
         return self.longest_path_length
 
 class Architecture(nn.Module):
-    def __init__(self, graph, input_sizes, input_dims, 
-                 output_size=10,
+    def __init__(self, graph, input_sizes, input_dims,
                  topdown=True,
                  stereo=False,
                  dropout=True, dropout_p=0.25, rep=1,
@@ -186,13 +185,11 @@ class Architecture(nn.Module):
         '''
         :param graph (Graph object)
         
-        TASK AND STIMULI-SPECIFIC PARAMETERS
+        STIMULI-SPECIFIC PARAMETERS
         :param input_sizes (list of tuples)
             list of input sizes (height, width) per node. If a node doesn't receive an outside input, its input size if (0, 0)
         :param input_dims (list of ints)
             list of input channel sizes per node. If a node doesn't receive an outside input, its input dim is 0
-        :param output_size (int)
-            number of classes for output. Task-specifc
             
         NEURAL NETWORK PARAMETERS
         :param topdown (bool):
@@ -238,8 +235,7 @@ class Architecture(nn.Module):
         
         # Readout layer
         h, w = self.graph.nodes[self.graph.output_node_index].input_size
-        self.fc1 = nn.Linear(h * w * self.graph.nodes[self.graph.output_node_index].hidden_dim, 100) 
-        self.fc2 = nn.Linear(100, output_size)
+        self.output_size = (h, w, self.graph.nodes[self.graph.output_node_index].hidden_dim)
         
         
         # PROJECTIONS FOR BOTTOM-UP INTERLAYER CONNECTIONS
@@ -448,12 +444,8 @@ class Architecture(nn.Module):
                 
                 # copy hidden state
                 hidden_states_prev = hidden_states
-
-        # Translate final output using linear readout layer
-        pred = self.fc1(F.relu(torch.flatten(hidden_states[self.graph.output_node_index], start_dim=1)))
-        pred = self.fc2(F.relu(pred))
           
-        return pred
+        return hidden_states[self.graph.output_node_index]
 
     def _init_hidden(self, batch_size):
         init_states = []

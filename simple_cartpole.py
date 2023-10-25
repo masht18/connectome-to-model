@@ -16,8 +16,9 @@ from torch import optim
 import torch.nn.functional as F
 import torchvision.transforms as T
 
+import gymnasium as gym
+
 from model.graph import Graph, Architecture
-from model.readouts import ClassifierReadout
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -50,16 +51,9 @@ torch.manual_seed(args['seed'])
 print(device)
 
 #-------------------------------------------------
-## 1: Prepare dataset
-print('Loading datasets')
-
-transform = T.Compose([T.Resize((32, 32)), T.ToTensor()])
-MNIST_path='/home/mila/m/mashbayar.tugsbayar/datasets'
-train_data = datasets.MNIST(root=MNIST_path, download=True, train=True, transform=transform)
-test_data = datasets.MNIST(root=MNIST_path, download=True, train=False, transform=transform)
-
-train_loader = DataLoader(train_data, batch_size=32, shuffle=True)
-test_loader = DataLoader(test_data, batch_size=32, shuffle=True)
+## 1: Create environment
+env = gym.make('CartPole-v1')
+observation, info = env.reset()
 
 #---------------------------------------------------
 ## 2: Load graph, choose input and output areas
@@ -70,18 +64,15 @@ graph_loc = args['graph_loc']
 graph = Graph(graph_loc, input_nodes=input_nodes, output_node=output_node)
 
 input_sizes = graph.find_input_sizes()    # Expected height, width of input for each area
-input_dims = graph.find_input_dims()      # Expected channel dimensions of input for each area
+input_dims = graph.find_input_dims()      # Expected channel dimensions of input for each area 
 
 #-----------------------------------------------------
 ## 3: Initialize neural network
 model = Architecture(graph, input_sizes, input_dims,
                     topdown=args['topdown']).cuda().float()
 
-readout = ClassifierReadout(model.output_size, n_classes=10).cuda().float()
-
 # Optimizer & loss function
-optimizer = optim.Adam([ {'params': model.parameters(), 'lr': 0.001},
-                        {'params': readout.parameters(), 'lr': 0.001}])
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 criterion = nn.CrossEntropyLoss()
 
 def test_sequence(dataloader, clean_data):
@@ -106,7 +97,7 @@ def test_sequence(dataloader, clean_data):
                 
             input_list = [torch.unsqueeze(imgs, 1)]
 
-            output = readout(model(input_list))
+            output = model(input_list)
 
             _, predicted = torch.max(output.data, 1)
             total += label.size(0)
@@ -125,7 +116,7 @@ def train_sequence():
         
         input_list = [torch.unsqueeze(imgs, 1)]
         
-        output = readout(model(input_list))
+        output = model(input_list)
             
         loss = criterion(output, label)
         running_loss += loss.item()

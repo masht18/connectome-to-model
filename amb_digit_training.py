@@ -20,6 +20,7 @@ import torch.utils.data as data_utils
 
 from utils.datagen import *
 from model.graph import Graph, Architecture
+from model.readouts import ClassifierReadout
 from utils.audio_dataset import MELDataset
 from utils.audio_dataset import AudioVisualDataset
 
@@ -98,7 +99,7 @@ def test_sequence(dataloader, align_to='image'):
             label = label[label_idx].to(device)
             x = [torch.unsqueeze(inp, 1).to(device).float() for inp in x if inp.ndim != 5]
             
-            output = model(x)
+            output = readout(model(x))
 
             _, predicted = torch.max(output.data, 1)
             total += label.size(0)
@@ -119,7 +120,7 @@ def train_sequence(align_to='image'):
         label = label[label_idx].to(device)
         x = [torch.unsqueeze(inp, 1).to(device).float() for inp in x if inp.ndim != 5]
             
-        output = model(x)
+        output = readout(model(x), start_dim=1)
             
         loss = criterion(output, label)
         running_loss += loss.item()
@@ -140,8 +141,10 @@ input_dims = graph.find_input_dims()
 # INIT MODEL
 model = Architecture(graph, input_sizes, input_dims,
                     topdown=args['topdown']).cuda().float()
+readout = ClassifierReadout(model.output_size, n_classes=10).cuda().float()
 
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.Adam([ {'params': model.parameters(), 'lr': 0.001},
+                        {'params': readout.parameters(), 'lr': 0.001}])
 criterion = nn.CrossEntropyLoss()
 
 #model_parameters = filter(lambda p: p.requires_grad, model.parameters())

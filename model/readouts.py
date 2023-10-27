@@ -18,24 +18,30 @@ class ClassifierReadout(nn.Module):
     
 
 class ActionReadout(nn.Module):
-    def __init__(self, output_size, act_space_sz):
+    def __init__(self, output_size, act_dim, h_dim=100):
         super(ActionReadout, self).__init__()
         
+        log_std = -0.5 * np.ones(act_dim, dtype=np.float32)
+        self.log_std = torch.nn.Parameter(torch.as_tensor(log_std))
+        
         h, w, dim = output_size
-        self.fc = nn.Linear(h * w * dim, act_space_sz*2)
+        self.fc1 = nn.Linear(h * w * dim, h_dim)
+        self.fc2 = nn.Linear(h_dim, act_dim)
         
     def forward(self, x):
-        params = self.fc(F.relu(torch.flatten(x, start_dim=1)))
-        dists = Normal(*params)
-        return dists
+        mean = self.fc1(F.relu(torch.flatten(x, start_dim=1)))
+        std = torch.exp(self.log_std)
+        return Normal(mean, std)
     
 class ValueReadout(nn.Module):
-    def __init__(self, output_size):
-        super(ActionReadout, self).__init__()
+    def __init__(self, output_size, h_dim=100):
+        super(ValueReadout, self).__init__()
         
         h, w, dim = output_size
-        self.fc = nn.Linear(h * w * dim, 1)
+        self.fc1 = nn.Linear(h * w * dim, h_dim)
+        self.fc2 = nn.Linear(h_dim, 1)
         
     def forward(self, x):
-        value = self.fc(F.relu(torch.flatten(x, start_dim=1)))
+        value = self.fc1(F.relu(torch.flatten(x, start_dim=1)))
+        value = self.fc2(F.relu(value))
         return value

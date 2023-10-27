@@ -65,7 +65,8 @@ class Graph(object):
     :param output_nodes (int)
         node to get readout from
     """
-    def __init__(self, graph_loc, input_nodes, output_node, directed=True, bias=False, dtype = torch.cuda.FloatTensor):
+    def __init__(self, graph_loc, input_nodes, output_node, 
+                 bias=False, dtype = torch.cuda.FloatTensor):
         
         graph_df = pd.read_csv(graph_loc)
         self.num_node = graph_df.shape[0]
@@ -76,8 +77,6 @@ class Graph(object):
 
         self.input_node_indices = input_nodes
         self.output_node_index = output_node
-
-        self.directed = directed #flag for whether the connections are directed 
 
         self.dtype = dtype
         self.bias = bias
@@ -272,7 +271,6 @@ class Architecture(nn.Module):
                     per_input_projections.append(proj)
             
             # dealing with the layer-to-layer projections
-
             for start_node in self.graph.nodes[end_node].in_nodes_indices:
                 
                 # calculate convolution dimensions

@@ -68,8 +68,7 @@ input_dims = graph.find_input_dims()      # Expected channel dimensions of input
 
 #-----------------------------------------------------
 ## 3: Initialize neural network
-model = Architecture(graph, input_sizes, input_dims,
-                    topdown=args['topdown']).cuda().float()
+model = Agent(graph, observation, )
 
 # Optimizer & loss function
 optimizer = optim.Adam(model.parameters(), lr=0.001)

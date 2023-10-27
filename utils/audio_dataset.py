@@ -1,6 +1,9 @@
+'''
+Dataset and helper functions for audiovisual task
+'''
+
 import os
 import soundfile
-#import librosa
 import gzip
 import random
 
@@ -13,8 +16,7 @@ from glob import glob
 
 class AudioVisualDataset(tdata.Dataset):
     '''
-    torch dataset that gives simultaneous image and audio clues
-    
+    torch dataset with two streams of stimuli: audio and visual
     '''
     def __init__(self, visual_dataset, audio_dataset, 
                  cache_dir, 

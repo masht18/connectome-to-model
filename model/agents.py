@@ -15,10 +15,14 @@ class Agent():
        want to this class.
     '''
 
-    def __init__(self, obs_space, act_space, graph, batch_size):
+    def __init__(self, graph, obs_space, act_dim, 
+                 batch_size=125, 
+                 topdown=True):
         
         # environment
         self.obs_space_sz = obs_space.shape[0]
+        input_sizes = [(1, 1) if i in graph.input_node_indices else (0,0) for i in graph.num_node]
+        input_dims = [self.obs_space_sz if i in graph.input_node_indices else 0 for i in graph.num_node]
         
         # Model
         self.model = Architecture(graph, input_sizes, input_dims,

@@ -20,11 +20,7 @@ setup(
           'glob',
           'importlib',
           'matplotlib',
-          'torchvision',
-          'argparse',
-          'hub',
-          'ambiguous',
-          'scipy',        
+          'torchvision',      
       ],
   classifiers=[
     'Development Status :: 3 - Alpha', 

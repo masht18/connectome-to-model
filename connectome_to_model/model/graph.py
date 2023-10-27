@@ -347,7 +347,11 @@ class Architecture(nn.Module):
         """
         # find the time length of the longest input signal + enough extra time for the last input to go through all nodes
         seq_len = max([i[0].shape[1] if isinstance(i, list) else i.shape[1] for i in all_inputs])
+<<<<<<< HEAD:connectome_to_model/model/graph.py
         process_time = seq_len + self.graph.longest_path_length - 1
+=======
+        process_time = seq_len + self.graph.output_node_index
+>>>>>>> 77f0f92bc0737c8d525800cc50b2c34756ef9ac3:model/graph.py
         
         # batching or single input
         if batch==True:

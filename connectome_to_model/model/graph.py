@@ -11,17 +11,22 @@ class Node:
     
     :param index (int)
         Node ID as it is in connectome file
-    :param in_nodes_indices (list of int)
+    :param input_nodes (list of int)
         nodes feeding forward into current node (bottom-up inputs)
     :param out_nodes_indices (list of int)
-        nodes current node sends value and receives feedback from (topdown inputs)
+        nodes current node sends voutput to and receives feedback from (topdown inputs)
         
     :param input_size (tuple of int)
         (height, width) of input to node
     :param input_dim (int)
         channel dim of input to node
+        
     :param hidden_dim (int)
-        hidden dim of node
+        hidden dim of node (corresponds to relative area size)
+    :param basal_topdown_dim (int)
+        amount of basal feedback received (see S1 in README)
+    :param apical_topdown_dim (int)
+        amount of apical feedback received (see S1 in README)
     :param kernel_size (tuple of int)
         kernel/receptive field size of node
         
@@ -56,7 +61,7 @@ class Graph(object):
     :param graph_loc (str)
         location of csv file connectome data file 
     :param input_nodes (list of int)
-        nodes that receive direct input
+        nodes that receive direct stimuli
     :param output_nodes (int)
         node to get readout from
     """
@@ -68,7 +73,6 @@ class Graph(object):
         self.conn = self.conn_strength > 0                                           # binary matrix of connections        
         self.node_dims = [row for _, row in graph_df.iterrows()]                     # dimensions of each node/area
         self.nodes = self.generate_node_list(self.conn, self.node_dims)              # turn dataframe into list of graph nodes
-        #self.longest_path_length = self.find_longest_path()
 
         self.input_node_indices = input_nodes
         self.output_node_index = output_node
@@ -181,20 +185,25 @@ class Architecture(nn.Module):
                  proj_hidden_dim=32, device='cuda'):
         '''
         :param graph (Graph object)
+        
+        TASK AND STIMULI-SPECIFIC PARAMETERS
         :param input_sizes (list of tuples)
-            list of input sizes (height, width) per node. If a node doesn't receive an outside input, it's (0, 0)
+            list of input sizes (height, width) per node. If a node doesn't receive an outside input, its input size if (0, 0)
+        :param input_dims (list of ints)
+            list of input channel sizes per node. If a node doesn't receive an outside input, its input dim is 0
         :param output_size (int)
-            size of model output
-        :param topdown (bool)
-        :param topdown_mechanism (str)
-            'multiplicative' or 'composite', how to combine top-down info within the block
+            number of classes for output. Task-specifc
+            
+        NEURAL NETWORK PARAMETERS
+        :param topdown (bool):
+            if enabled, uses at least multiplicative topdown
         :param stereo (bool or list of bools):
             if raw inputs to one area are stereo images. NOTE: stereo images are assumed to be equal in size 
         :param dropout (bool)
         :param dropout_p (float)
             dropout probability if dropout is enabled
         :param rep (int)
-            repetitions, i.e how many times to view the sequence in full
+            repetitions, i.e how many times to view the stimuli in full
         :param proj_hidden_dim (int)
             hyperparam. intermediate dimension of projection convolutions
         '''
@@ -295,6 +304,7 @@ class Architecture(nn.Module):
                 
         # PROJECTIONS FOR TOPDOWN INTERLAYER CONNECTIONS        
         for end_node in range(graph.num_node):
+            
             # number of nodes it projects to (i.e everyone it receives feedback from)
             num_inputs = len(self.graph.nodes[end_node].out_nodes_indices)
             per_input_projections = []
@@ -306,9 +316,6 @@ class Architecture(nn.Module):
                 # upsample
                 if top_size[0]*top_size[1] < bottom_size[0]*bottom_size[1]:
                     stride = [o//i for o, i in zip(bottom_size, top_size)]
-                    #proj = ILC_upsampler(in_channel=graph.nodes[start_node].hidden_dim,
-                    #                     out_channel=self.proj_hidden_dim,
-                    #                    stride=stride, device=device)
                     proj = nn.ConvTranspose2d(in_channels=graph.nodes[start_node].hidden_dim,
                                          out_channels=self.proj_hidden_dim,
                                               kernel_size=stride, stride=stride, device=device)
@@ -329,21 +336,20 @@ class Architecture(nn.Module):
             per_input_projections.append(integrator_conv)
             
             self.topdown_projections.append(nn.ModuleList(per_input_projections))
-            #self.topdown_projections = nn.ModuleList(self.topdown_projections)
             
-        #print(self.topdown_projections)
 
     def forward(self, all_inputs, batch=True):
         """
-        :param a list of tensor of size n, each consisting a input_tensor: (b, t, c, h, w). 
-            n as the number of input signals. Order should correspond to self.graph.input_node_indices
-        :param topdown: size (b,hidden,h,w) 
-        :return: label 
+        :param all_inputs 
+               list of tensor of size n, each consisting a input_tensor: (b, t, c, h, w). 
+               n as the number of input streams. Order should correspond to self.graph.input_node_indices
+        :return: predicted label 
         """
-        #find the time length of the longest input signal + enough extra time for the last input to go through all nodes
+        # find the time length of the longest input signal + enough extra time for the last input to go through all nodes
         seq_len = max([i[0].shape[1] if isinstance(i, list) else i.shape[1] for i in all_inputs])
         process_time = seq_len + self.graph.longest_path_length - 1
         
+        # batching or single input
         if batch==True:
             batch_size = all_inputs[0][0].shape[0] if self.stereo else all_inputs[0].shape[0]
         else:
@@ -425,9 +431,6 @@ class Architecture(nn.Module):
                         h = self.dropout(h)
                     hidden_states[node] = h
                     
-                    # flag the areas to process in next iteration
-                    #for next_node in self.graph.nodes[node].out_nodes_indices:
-                    #    active_nodes.append(next_node)
                     
                 # flag the areas to process in next iteration
                 old_nodes = active_nodes
@@ -446,6 +449,7 @@ class Architecture(nn.Module):
                 # copy hidden state
                 hidden_states_prev = hidden_states
 
+        # Translate final output using linear readout layer
         pred = self.fc1(F.relu(torch.flatten(hidden_states[self.graph.output_node_index], start_dim=1)))
         pred = self.fc2(F.relu(pred))
           

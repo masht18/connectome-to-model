@@ -62,7 +62,7 @@ class Graph(object):
         location of csv file connectome data file 
     :param input_nodes (list of int)
         nodes that receive direct stimuli
-    :param output_nodes (int)
+    :param output_nodes (list of int)
         node to get readout from
     """
     def __init__(self, graph_loc, input_nodes, output_node, 
@@ -75,8 +75,8 @@ class Graph(object):
         self.node_dims = [row for _, row in graph_df.iterrows()]                     # dimensions of each node/area
         self.nodes = self.generate_node_list(self.conn, self.node_dims)              # turn dataframe into list of graph nodes
 
-        self.input_node_indices = input_nodes
-        self.output_node_index = output_node
+        self.input_indices = input_nodes
+        self.output_indices = output_node
 
         self.dtype = dtype
         self.bias = bias
@@ -132,7 +132,7 @@ class Graph(object):
     def find_input_sizes(self):
         input_szs = []
         for node in self.nodes:
-            if node.index in self.input_node_indices:
+            if node.index in self.input_indices:
                 input_szs.append(node.input_size)
             else:
                 input_szs.append((0,0))
@@ -141,7 +141,7 @@ class Graph(object):
     def find_input_dims(self):
         input_dims = []
         for node in self.nodes:
-            if node.index in self.input_node_indices:
+            if node.index in self.input_indices:
                 input_dims.append(node.input_dim)
             else:
                 input_dims.append(0)
@@ -232,9 +232,11 @@ class Architecture(nn.Module):
                                          dtype=graph.dtype))
         self.cell_list = nn.ModuleList(cell_list)
         
-        # Readout layer
-        h, w = self.graph.nodes[self.graph.output_node_index].input_size
-        self.output_size = (h, w, self.graph.nodes[self.graph.output_node_index].hidden_dim)
+        # Store output sizes for readout
+        self.output_sizes = []
+        for i in self.graph.output_indices:
+            h, w = self.graph.nodes[i].input_size
+            self.output_sizes.append((h, w, self.graph.nodes[i].hidden_dim))
         
         
         # PROJECTIONS FOR BOTTOM-UP INTERLAYER CONNECTIONS
@@ -243,7 +245,7 @@ class Architecture(nn.Module):
             num_inputs = len(self.graph.nodes[end_node].in_nodes_indices)
             
             # if node receives raw input, make a projection layer for that too
-            if end_node in self.graph.input_node_indices:
+            if end_node in self.graph.input_indices:
                 # calculate convolution dimensions
                 stride, padding = self.calc_stride_padding(input_sizes[end_node], 
                                                       graph.nodes[end_node].input_size, 
@@ -336,8 +338,9 @@ class Architecture(nn.Module):
         """
         :param all_inputs 
                list of tensor of size n, each consisting a input_tensor: (b, t, c, h, w). 
-               n as the number of input streams. Order should correspond to self.graph.input_node_indices
-        :return: predicted label 
+               n as the number of input streams. Order should correspond to self.graph.input_indices
+        :return: list of outputs
+            number of outputs equal to output indices 
         """
         # find the time length of the longest input signal + enough extra time for the last input to go through all nodes
         seq_len = max([i[0].shape[1] if isinstance(i, list) else i.shape[1] for i in all_inputs])
@@ -355,7 +358,7 @@ class Architecture(nn.Module):
         # init hidden states
         hidden_states = self._init_hidden(batch_size=batch_size)
         hidden_states_prev = self._init_hidden(batch_size=batch_size)
-        active_nodes = self.graph.input_node_indices.copy()
+        active_nodes = self.graph.input_indices.copy()
         #time = seq_len * self.rep
         
         # Each time you look at the sequence
@@ -374,15 +377,15 @@ class Architecture(nn.Module):
                     projs = self.bottomup_projections[node]   # relevant bottom-up projections for this node
 
                     # direct stimuli if node receives it + the sequence isn't done
-                    if node in self.graph.input_node_indices and t < seq_len:
-                        inp = all_inputs[self.graph.input_node_indices.index(node)]
+                    if node in self.graph.input_indices and t < seq_len:
+                        inp = all_inputs[self.graph.input_indices.index(node)]
                         if self.stereo:
                             bottomup.append(projs[input_num][0](inp[0][:, t, :, :, :]))
                             bottomup.append(projs[input_num][1](inp[1][:, t, :, :, :]))
                         else:
                             bottomup.append(projs[input_num](inp[:, t, :, :, :]))
                         input_num += 1
-                    elif node in self.graph.input_node_indices: #if input is finished, but bottomup processing is still going (network is ruminating)
+                    elif node in self.graph.input_indices: #if input is finished, but bottomup processing is still going (network is ruminating)
                         if self.stereo:
                             bottomup.append(projs[input_num][0](torch.zeros_like(inp[:, 0, :, :, :])))
                             bottomup.append(projs[input_num][1](torch.zeros_like(inp[:, 0, :, :, :])))
@@ -440,12 +443,12 @@ class Architecture(nn.Module):
                 for inp_idx, seq in enumerate(all_inputs):
                     seq_shape = seq[0].shape[1] if self.stereo else seq.shape[1]
                     if t + 1 < seq_shape:
-                        active_nodes.append(self.graph.input_node_indices[inp_idx])
+                        active_nodes.append(self.graph.input_indices[inp_idx])
                 
                 # copy hidden state
                 hidden_states_prev = hidden_states
           
-        return hidden_states[self.graph.output_node_index]
+        return [hidden_states[i] for i in self.graph.output_indices]
 
     def _init_hidden(self, batch_size):
         init_states = []

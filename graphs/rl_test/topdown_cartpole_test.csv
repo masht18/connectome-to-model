@@ -1,0 +1,4 @@
+﻿A,B,C,hidden_dim,input_dim,input_h,input_w,kernel_h,kernel_w,basal_topdown_dim,apical_topdown_dim
+0,1,0,10,4,1,1,1,1,0,0
+0,0,1,10,10,1,1,1,1,0,0
+0,0,0,10,10,1,1,1,1,0,0

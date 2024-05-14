@@ -84,7 +84,6 @@ class ConvGRUBasalTopDownCell(nn.Module):
             if topdown == None:
                 basal_topdown = torch.zeros(b, self.basal_topdown_dim, h, w, device=self.device)
             else:
-                #print(topdown.shape)
                 basal_topdown, topdown = torch.split(topdown, (self.basal_topdown_dim, topdown.shape[1]-self.basal_topdown_dim), dim=1)
             combined = torch.cat([input_tensor, h_cur, basal_topdown], dim=1)
         else:
@@ -98,16 +97,10 @@ class ConvGRUBasalTopDownCell(nn.Module):
 
         # APICAL COMPARTMENT
         if self.apical_topdown_dim != 0:
-            # composite topdown
-            #print(topdown.shape[1])
-            #print(in_dim+self.hidden_dim+self.apical_topdown_dim)
             add_topdown, mult_topdown = torch.split(topdown, (self.apical_topdown_dim, mult_topdown_dim - self.apical_topdown_dim), dim=1)
-            #print(add_topdown.shape)
-            #print(mult_topdown.shape)
             combined = torch.cat([input_tensor, reset_gate*h_cur, add_topdown], dim=1) * (F.relu(mult_topdown) + 1)
         else:
             # multiplicative topdown
-            #print(topdown.shape)
             combined = torch.cat([input_tensor, reset_gate*h_cur], dim=1) * (F.relu(topdown) + 1)
             
         cc_cnm = self.conv_can(combined)

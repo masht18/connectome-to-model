@@ -29,13 +29,21 @@ This label reference helps find an example of a specific class given a dataset.
     
 '''
 def generate_label_reference(dataset, num_classes=10, dataset_type='mnist'):
-    labels = dataset.labels.data() if dataset_type == 'fsdd' else dataset.targets
+    labels = torch.tensor(dataset.labels) if dataset_type == 'fsdd' else torch.tensor(dataset.targets)
     label_ref = []
 
     for i in range(num_classes):
         label_ref.append((labels == i).nonzero()[0])
         
     return label_ref
+
+def label_reference_ambvisual(dataset, n_cls=10):
+    # specify n_cls=26 for EMNIST. then index class-specific datasets with newdataset[class]. 
+    # to sample from the dataset i recommend to use a pytorch dataloader.. DataLoader(newdataset[class], ...)
+    newdataset = [[] for _ in range(n_cls)]
+    for (im, label) in dataset:
+        newdataset[label[0]].append((im, label))
+    return newdataset
 
 '''
 Given an MNIST image, generate a 3 image sequence based on its class (6-7-8 from 8, 8-9-0 from 0, etc)

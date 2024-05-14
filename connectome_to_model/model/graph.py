@@ -1,4 +1,4 @@
-from model.topdown_gru import ConvGRUBasalTopDownCell, ILC_upsampler
+from connectome_to_model.model.topdown_gru import ConvGRUBasalTopDownCell, ILC_upsampler
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -65,7 +65,7 @@ class Graph(object):
     :param output_nodes (list of int)
         node to get readout from
     """
-    def __init__(self, graph_loc, input_nodes, output_node, 
+    def __init__(self, graph_loc, input_nodes, output_nodes, 
                  bias=False, dtype = torch.cuda.FloatTensor):
         
         graph_df = pd.read_csv(graph_loc)
@@ -76,16 +76,10 @@ class Graph(object):
         self.nodes = self.generate_node_list(self.conn, self.node_dims)              # turn dataframe into list of graph nodes
 
         self.input_indices = input_nodes
-        self.output_indices = output_node
+        self.output_indices = output_nodes if isinstance(output_nodes, list) else [output_nodes] 
 
         self.dtype = dtype
         self.bias = bias
-
-        #creates an empty set called visited to keep track of the nodes that have been visited during the depth-first search (DFS) traversal of the graph 
-        self.visited = set() #a list of int (node indicies)
-        self.longest_path_length = 0
-        self.longest_path_length = self.find_longest_path_length()
-        
 
     def generate_node_list(self,connections, node_dims):
         nodes = []
@@ -146,34 +140,6 @@ class Graph(object):
             else:
                 input_dims.append(0)
         return input_dims
-    
-    def find_longest_path(self):
-        visited = []
-        for node in self.nodes:
-            if node.index not in self.visited:
-                self.dfs(node, 0)
-
-        return self.longest_path_length
-
-    def dfs(self, node, current_length): # depth-first search (DFS) traversal of the graph
-        self.visited.add(node.index)
-        current_length += 1
-
-        for out_node_index in node.out_nodes_indices:
-            if out_node_index not in self.visited:
-                self.dfs(self.nodes[out_node_index], current_length)
-
-        if current_length > self.longest_path_length:
-            self.longest_path_length = current_length
-
-        self.visited.remove(node.index)
-
-    def find_longest_path_length(self):
-        for node in self.nodes:
-            if node.index not in self.visited:
-                self.dfs(node, 0)
-
-        return self.longest_path_length
 
 class Architecture(nn.Module):
     def __init__(self, graph, input_sizes, input_dims,
@@ -202,6 +168,7 @@ class Architecture(nn.Module):
             repetitions, i.e how many times to view the stimuli in full
         :param proj_hidden_dim (int)
             hyperparam. intermediate dimension of projection convolutions
+            
         '''
         super(Architecture, self).__init__()
         
@@ -333,8 +300,13 @@ class Architecture(nn.Module):
             
             self.topdown_projections.append(nn.ModuleList(per_input_projections))
             
+            #h, w = (4, 4)
+            #self.fc1 = nn.Linear(h * w * 10, 100) 
+            #self.fc2 = nn.Linear(100, 10)
 
-    def forward(self, all_inputs, batch=True):
+            
+
+    def forward(self, all_inputs, batch=True, process_time=None, return_all=False):
         """
         :param all_inputs 
                list of tensor of size n, each consisting a input_tensor: (b, t, c, h, w). 
@@ -345,8 +317,8 @@ class Architecture(nn.Module):
         # find the time length of the longest input signal + enough extra time for the last input to go through all nodes
         seq_len = max([i[0].shape[1] if isinstance(i, list) else i.shape[1] for i in all_inputs])
 
-        process_time = seq_len + self.graph.longest_path_length - 1
-
+        if process_time == None:
+            process_time = seq_len + self.graph.num_node - 1
         
         # batching or single input
         if batch==True:
@@ -359,7 +331,6 @@ class Architecture(nn.Module):
         hidden_states = self._init_hidden(batch_size=batch_size)
         hidden_states_prev = self._init_hidden(batch_size=batch_size)
         active_nodes = self.graph.input_indices.copy()
-        #time = seq_len * self.rep
         
         # Each time you look at the sequence
         for rep in range(self.rep):
@@ -386,6 +357,7 @@ class Architecture(nn.Module):
                             bottomup.append(projs[input_num](inp[:, t, :, :, :]))
                         input_num += 1
                     elif node in self.graph.input_indices: #if input is finished, but bottomup processing is still going (network is ruminating)
+                        inp = all_inputs[self.graph.input_indices.index(node)]
                         if self.stereo:
                             bottomup.append(projs[input_num][0](torch.zeros_like(inp[:, 0, :, :, :])))
                             bottomup.append(projs[input_num][1](torch.zeros_like(inp[:, 0, :, :, :])))
@@ -402,20 +374,27 @@ class Architecture(nn.Module):
                         continue
                     
                     # Concatenate all inputs and integrate
+                    #for b in bottomup:
+                    #    print(b.shape)
                     bottomup = torch.cat(bottomup, dim=1)
                     bottomup = projs[-1](bottomup)
+                    #print(node)
                     
                     ##################################
                     # Find topdown inputs, assumes every feedforward connection out of node has feedback
                     # Note there's no external topdown input
                     topdown_projs = self.topdown_projections[node]
+                    #print(topdown_projs)
                     
                     if self.topdown and (rep != 0 or t!=0) and self.graph.nodes[node].out_nodes_indices.nelement()!=0: 
                         topdown = []
 
                         for i, topdown_node in enumerate(self.graph.nodes[node].out_nodes_indices):
+                            #print(hidden_states_prev[topdown_node].shape)
                             topdown.append(topdown_projs[i](hidden_states_prev[topdown_node]))
                         
+                        #for t1 in topdown:
+                            #print(t1.shape)
                         topdown = topdown_projs[-1](torch.cat(topdown, dim=1))
                             
                     else:  
@@ -447,7 +426,10 @@ class Architecture(nn.Module):
                 
                 # copy hidden state
                 hidden_states_prev = hidden_states
-          
+                
+        if return_all:
+            return hidden_states
+        
         return [hidden_states[i] for i in self.graph.output_indices]
 
     def _init_hidden(self, batch_size):

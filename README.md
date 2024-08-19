@@ -19,6 +19,7 @@ You can get started by installing the toolbox from the source repository with:
 ```  
 git clone https://github.com/masht18/convgru_feedback.git
 cd convgru_feedback
+pip install -e .
 ```
 
 ## 3 Connectome file

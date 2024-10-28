@@ -50,10 +50,10 @@ To turn the above connectome file into an aritifical neural network:
 ```
 from model.graph import Graph, Architecture
 
-input_node = [0, 2]                                  # Nodes which receive input, can be multiple
-output_node = 1                                      # Output node
-input_dims = [1, 0, 1]                               # Size of inputs to each of the nodes, leave 0 for nodes that do not receive input 
-input_sizes = [(32, 32), (0, 0), (64, 64)]
+input_node = [0, 2]                                  # Nodes which receive inputs, can be multiple
+output_node = [1]                                    # Readout nodes, list or int, can be multiple                               
+input_sizes = graph.find_input_sizes()               # Size of inputs to each of the nodes in model  
+input_dims = graph.find_input_dims()
 
 # Load graph
 graph_loc = '/path/to/connectome_file.csv'

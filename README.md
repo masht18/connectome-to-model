@@ -52,12 +52,14 @@ from model.graph import Graph, Architecture
 
 input_node = [0, 2]                                  # Nodes which receive inputs, can be multiple
 output_node = [1]                                    # Readout nodes, list or int, can be multiple                               
-input_sizes = graph.find_input_sizes()               # Size of inputs to each of the nodes in model  
-input_dims = graph.find_input_dims()
 
 # Load graph
 graph_loc = '/path/to/connectome_file.csv'
 graph = Graph(graph_loc, input_nodes=input_node, output_node=output_node)
+
+# Sizes of stimuli. They can be fetched from the graph if they're not different from the input size/dims of the input nodes
+input_sizes = graph.find_input_sizes()  
+input_dims = graph.find_input_dims()
 
 # Build ANN
 model = Architecture(graph, input_sizes, input_dims,

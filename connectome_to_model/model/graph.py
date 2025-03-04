@@ -31,7 +31,8 @@ class Node:
         kernel/receptive field size of node
         
     '''
-    def __init__(self, index, input_nodes, output_nodes, input_size = (28, 28),
+    def __init__(self, index, input_nodes, output_nodes, fb_nodes, 
+                 input_size = (28, 28),
                  input_dim = 1, hidden_dim = 10, 
                  basal_topdown_dim=0, apical_topdown_dim=0,
                  kernel_size = (3,3)):
@@ -40,6 +41,7 @@ class Node:
         self.index = index
         self.in_nodes_indices = input_nodes
         self.out_nodes_indices = output_nodes
+        self.fb_nodes = fb_nodes
         #self.in_strength = [] #connection strengths of in_nodes
         #self.out_strength = [] #connection strength of out_nodes
 
@@ -64,14 +66,18 @@ class Graph(object):
         nodes that receive direct stimuli
     :param output_nodes (list of int)
         node to get readout from
+        
+    :param reciprocal (bool):
+        a reciprocal graph only has 1, 0 and assumes all FF connections have equivalent FB
     """
-    def __init__(self, graph_loc, input_nodes, output_nodes, 
-                 bias=False, dtype = torch.cuda.FloatTensor):
+    def __init__(self, graph_loc, input_nodes, output_nodes,
+                 bias=False, reciprocal=True, dtype = torch.cuda.FloatTensor):
         
         graph_df = pd.read_csv(graph_loc)
+        self.reciprocal = reciprocal
         self.num_node = graph_df.shape[0]
-        self.conn_strength = torch.tensor(graph_df.iloc[:, :self.num_node].values)   # connection_strength_matrix
-        self.conn = self.conn_strength > 0                                           # binary matrix of connections        
+        self.conn = torch.tensor(graph_df.iloc[:, :self.num_node].values)   # connection_strength_matrix
+        #self.conn = self.conn_strength > 0                                           # binary matrix of connections        
         self.node_dims = [row for _, row in graph_df.iterrows()]                     # dimensions of each node/area
         self.nodes = self.generate_node_list(self.conn, self.node_dims)              # turn dataframe into list of graph nodes
 
@@ -85,8 +91,10 @@ class Graph(object):
         nodes = []
         # initialize node list
         for n in range(self.num_node):
-            input_nodes = torch.nonzero(connections[:, n])
-            output_nodes = torch.nonzero(connections[n, :])
+            input_nodes = torch.nonzero(connections[:, n] > 0)
+            output_nodes = torch.nonzero(connections[n, :] > 0)
+            fb_nodes = output_nodes if self.reciprocal else torch.nonzero(connections[:, n] < 0)
+            
             hidden_dim = node_dims[n].hidden_dim
             input_dim = node_dims[n].input_dim
             basal_topdown_dim=node_dims[n].basal_topdown_dim
@@ -94,7 +102,7 @@ class Graph(object):
             input_size = (node_dims[n].input_h, node_dims[n].input_w)
             kernel_size = (node_dims[n].kernel_h, node_dims[n].kernel_w)
            
-            node = Node(n, input_nodes, output_nodes, 
+            node = Node(n, input_nodes, output_nodes, fb_nodes,
                         input_dim=input_dim, 
                         input_size=input_size,
                         basal_topdown_dim=basal_topdown_dim, 
@@ -269,10 +277,10 @@ class Architecture(nn.Module):
         for end_node in range(graph.num_node):
             
             # number of nodes it projects to (i.e everyone it receives feedback from)
-            num_inputs = len(self.graph.nodes[end_node].out_nodes_indices)
+            num_inputs = len(self.graph.nodes[end_node].fb_nodes)
             per_input_projections = []
             
-            for start_node in self.graph.nodes[end_node].out_nodes_indices:
+            for start_node in self.graph.nodes[end_node].fb_nodes:
                 bottom_size = graph.nodes[end_node].input_size
                 top_size = graph.nodes[start_node].input_size
             
@@ -299,12 +307,6 @@ class Architecture(nn.Module):
             per_input_projections.append(integrator_conv)
             
             self.topdown_projections.append(nn.ModuleList(per_input_projections))
-            
-            #h, w = (4, 4)
-            #self.fc1 = nn.Linear(h * w * 10, 100) 
-            #self.fc2 = nn.Linear(100, 10)
-
-            
 
     def forward(self, all_inputs, batch=True, process_time=None, return_all=False):
         """
@@ -386,10 +388,10 @@ class Architecture(nn.Module):
                     topdown_projs = self.topdown_projections[node]
                     #print(topdown_projs)
                     
-                    if self.topdown and (rep != 0 or t!=0) and self.graph.nodes[node].out_nodes_indices.nelement()!=0: 
+                    if self.topdown and (rep != 0 or t!=0) and self.graph.nodes[node].fb_nodes.nelement()!=0: 
                         topdown = []
 
-                        for i, topdown_node in enumerate(self.graph.nodes[node].out_nodes_indices):
+                        for i, topdown_node in enumerate(self.graph.nodes[node].fb_nodes):
                             #print(hidden_states_prev[topdown_node].shape)
                             topdown.append(topdown_projs[i](hidden_states_prev[topdown_node]))
                         

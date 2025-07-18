@@ -1,0 +1,4 @@
+V1,V2,V4,hidden_dim,input_dim,input_h,input_w,kernel_h,kernel_w,output_h,output_w,apical_topdown_dim,basal_topdown_dim
+0,1,0,32,1,28,28,3,3,16,16,0,0
+0,0,1,32,10,14,14,3,3,8,8,0,0
+0,0,0,32,10,7,7,3,3,16,16,0,0

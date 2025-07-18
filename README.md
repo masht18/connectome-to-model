@@ -1,4 +1,4 @@
-# 🧠 Connectome-to-Model: Neural Architectures with Biological Connectivity
+# Connectome-to-Model: Neural Architectures with Biological Connectivity
 
 <div align="center">
 
@@ -7,8 +7,6 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Transform biological connectome data into functional artificial neural networks with biologically-inspired top-down feedback mechanisms**
-
-[Installation](#-installation) • [Quick Start](#-quick-start) • [Architecture](#-architecture) • [Examples](#-examples) • [API Reference](#-api-reference)
 
 </div>
 

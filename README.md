@@ -1,4 +1,4 @@
-# 🧠 Connectome-to-Model: Neural Architecture from Biological Connectivity
+# 🧠 Connectome-to-Model: Neural Architectures with Biological Connectivity
 
 <div align="center">
 

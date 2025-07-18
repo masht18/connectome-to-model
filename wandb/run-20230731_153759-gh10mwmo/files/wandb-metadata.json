@@ -1,0 +1,24 @@
+{
+    "os": "Linux-4.15.0-194-generic-x86_64-with-glibc2.27",
+    "python": "3.9.12",
+    "heartbeatAt": "2023-07-31T19:38:00.029844",
+    "startedAt": "2023-07-31T19:37:59.217689",
+    "docker": null,
+    "gpu": "Quadro RTX 8000",
+    "gpu_count": 1,
+    "cpu_count": 40,
+    "cuda": "10.2.89",
+    "args": [],
+    "state": "running",
+    "program": "/home/mila/m/mashbayar.tugsbayar/convgru_feedback/recovery_hparam_sweep.py",
+    "codePath": "recovery_hparam_sweep.py",
+    "git": {
+        "remote": "https://github.com/masht18/convgru_feedback",
+        "commit": "f210b6ec3dc9a9bd4ec214cac3dc6606e76ba93c"
+    },
+    "email": null,
+    "root": "/home/mila/m/mashbayar.tugsbayar/convgru_feedback",
+    "host": "cn-a001",
+    "username": "mashbayar.tugsbayar",
+    "executable": "/home/mila/m/mashbayar.tugsbayar/.conda/envs/nnet/bin/python"
+}

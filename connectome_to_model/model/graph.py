@@ -66,12 +66,15 @@ class Graph(object):
         nodes that receive direct stimuli
     :param output_nodes (list of int)
         node to get readout from
-        
+    :param bias (bool):
+        whether to use bias in convolutions
     :param reciprocal (bool):
         a reciprocal graph only has 1, 0 and assumes all FF connections have equivalent FB
+    :param dtype (torch.dtype, optional):
+        data type for tensors. If None, automatically chooses based on CUDA availability
     """
     def __init__(self, graph_loc, input_nodes, output_nodes,
-                 bias=False, reciprocal=True, dtype = torch.cuda.FloatTensor):
+                 bias=False, reciprocal=True, dtype=None):
         
         graph_df = pd.read_csv(graph_loc)
         self.reciprocal = reciprocal
@@ -84,7 +87,11 @@ class Graph(object):
         self.input_indices = input_nodes
         self.output_indices = output_nodes if isinstance(output_nodes, list) else [output_nodes] 
 
-        self.dtype = dtype
+        # Set dtype dynamically based on device availability
+        if dtype is None:
+            self.dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
+        else:
+            self.dtype = dtype
         self.bias = bias
 
     def generate_node_list(self,connections, node_dims):

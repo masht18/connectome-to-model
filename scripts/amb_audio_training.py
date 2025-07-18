@@ -6,8 +6,6 @@ import random
 import os
 import hub
 
-from ambiguous.dataset.dataset import DatasetTriplet
-
 from scipy.special import softmax
 from torch import nn
 from torchvision import datasets
@@ -21,19 +19,25 @@ from torchvision.transforms import Compose
 
 from connectome_to_model.utils.datagen import *
 from connectome_to_model.utils.mech_eval import *
+from connectome_to_model.utils.mech_eval import fetch_hstates
 from connectome_to_model.model.graph import Graph, Architecture
 from connectome_to_model.model.readouts import ClassifierReadout
 from connectome_to_model.utils.audio_dataset import MELDataset
 from connectome_to_model.utils.audio_dataset import AudioVisualDataset
 
-def fetch_clues(labels, reference_imgs=None, dataset_ref=None):
-    clues = torch.zeros((labels.shape[0], 1, 28, 28)) #dummy function to produce the right size
-        
-    return clues.to(device)
+def fetch_latents_as_tasks(model, areas=7, timesteps=7):
+    h_states = torch.zeros(2, areas, timesteps)
+    
+    as_testloader = DataLoader(testset, batch_size=400, shuffle=True)
+    mismatch_testloader = DataLoader(mismatch_testset, batch_size=400, shuffle=True)
+    
+    h_states[0] = fetch_hstates(model, as_testloader, align_to='audio', areas=areas, timesteps=timesteps, attention_flag=False,)
+    h_states[1] = fetch_hstates(model, mismatch_testloader, align_to='audio', areas=areas, timesteps=timesteps, attention_flag=False,)
+    
+    return h_states
 
 def randomize(y):
     return random.randint(0,9)
-
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -109,12 +113,14 @@ if __name__ == "__main__":
     parser.add_argument('--img_ambiguity', type = str2bool, default = True)
     parser.add_argument('--match', type = str2bool, default = True)
     parser.add_argument('--align_to', type = str, default = 'audio')
+    parser.add_argument('--reciprocal', type = str2bool, default = True)
     parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/graphs/ambaudio/multimodal_brainlike_MPC.csv')
-    parser.add_argument('--connection_decay', type = str, default = 'ones')
-    parser.add_argument('--return_bottom_layer', type = str2bool, default = False)
+    #parser.add_argument('--save_hstates', type = str2bool, default = 'saved_hstates/dim_red_tsne_big_rnn_mismatch.npy')
 
     parser.add_argument('--model_save', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/saved_models/brainlike_doubleamb_MPC2.pt')
     parser.add_argument('--results_save', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/results/brainlike_doubleamb_MPC2.npy')
+    parser.add_argument('--readout_save', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/saved_models/brainlike_extra_classifier.npy')
+    parser.add_argument('--hstates_save', type = str, default = None)
 
     args = vars(parser.parse_args())
 
@@ -137,10 +143,10 @@ if __name__ == "__main__":
     aum_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/aum'
     aun_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/aunv'
     
-    #uam_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uam'
-    uam_root = '/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_amb_match'
-    #uan_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uan'
-    uan_root = '/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_amb_mismatch'
+    uam_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uam'
+    #uam_root = '/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_amb_match'
+    uan_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uan'
+    #uan_root = '/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_amb_mismatch'
     
     uum_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uum'
     #uun_root='/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_clean_mismatch'
@@ -168,7 +174,7 @@ if __name__ == "__main__":
     input_nodes = [0, 4] # V1, A1
     output_node = 3 if args['align_to'] == 'image' else 6
     graph_loc = args['graph_loc']
-    graph = Graph(graph_loc, input_nodes=input_nodes, output_nodes=output_node)
+    graph = Graph(graph_loc, input_nodes=input_nodes, output_nodes=output_node, reciprocal=args['reciprocal'])
     input_sizes = graph.find_input_sizes()
     input_dims = graph.find_input_dims()
 
@@ -196,18 +202,20 @@ if __name__ == "__main__":
         print("Loading existing ConvGRU model")
     else:
         print("No pretrained model found. Training new one.")
+        
+    if os.path.exists(args['readout_save']):
+        readout.load_state_dict(torch.load(args['readout_save']))
+        print("Loading existing readout")
+    else:
+        print("No pretrained readout found. Training new one.")
 
     for epoch in range(args['epochs']):
         #train_acc = test_sequence(trainloader, align_to=args['align_to'])
         train_acc = 0
         match_acc = test_sequence(testloader, align_to=args['align_to'])
-        #match_acc = test_sequence(mismatch_testloader, align_to='image')
         mismatch_acc = test_sequence(mismatch_testloader, align_to=args['align_to'])
         control_img_align = test_sequence(control_testloader, align_to='image')
         control_audio_align = test_sequence(control_testloader, align_to='audio')
-        umap = dim_reduction(model, control_testset, datapoints=400)
-        with open('dim_red/audio/dim_red_tsne_MPC_control.npy', "wb") as f:
-            pickle.dump(umap, f)
         #allamb_img_align = test_sequence(allamb_control_testloader, align_to='image')
         #allamb_audio_align = test_sequence(allamb_control_testloader, align_to='audio')
         allamb_img_align = 0
@@ -231,3 +239,9 @@ if __name__ == "__main__":
             pickle.dump(losses, f)
 
         torch.save(model.state_dict(), args['model_save'])
+        
+        if args['hstates_save'] != None:
+            h_states = fetch_latents_as_tasks(model)
+        
+            with open(args['hstates_save'], "wb") as f:
+                pickle.dump(h_states, f)

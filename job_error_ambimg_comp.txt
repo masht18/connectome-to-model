@@ -1,0 +1,19 @@
+[=== Module anaconda/3 loaded ===]
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 64: export: `/CVMFS/CONFIG.MILA.QUEBEC/ETC/PYTHON.D/3.7=/cvmfs/config.mila.quebec/etc/python.d/3.7': not a valid identifier
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 65: export: `/HOME/MILA/M/MASHBAYAR.TUGSBAYAR/.CONDA/ENVS/CON2MODEL/BIN/PYTHON3.11=/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/bin/python3.11': not a valid identifier
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+Traceback (most recent call last):
+  File "/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/amb_digit_training.py", line 230, in <module>
+    printlog = '| epoch {:3d} | running loss {:5.4f} | train accuracy {:1.5f} |match accuracy {:1.5f} | mismatch accuracy {:1.5f} |control image alignment {:1.5f} |control audio alignment {:1.5f}'.format(epoch, loss, train_acc, match_acc, mismatch_acc, ambimg_acc, ambimg_audio_alignment)
+                                                                                                                                                                                                                   ^^^^
+NameError: name 'loss' is not defined. Did you mean: 'losses'?
+[=== Module anaconda/3 loaded ===]
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 64: export: `/CVMFS/CONFIG.MILA.QUEBEC/ETC/PYTHON.D/3.7=/cvmfs/config.mila.quebec/etc/python.d/3.7': not a valid identifier
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 65: export: `/HOME/MILA/M/MASHBAYAR.TUGSBAYAR/.CONDA/ENVS/CON2MODEL/BIN/PYTHON3.11=/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/bin/python3.11': not a valid identifier
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")

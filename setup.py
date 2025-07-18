@@ -10,18 +10,6 @@ setup(
   url = 'https://github.com/masht18/connectome-to-model.git',   
   download_url = 'https://github.com/masht18/connectome-to-model/archive/refs/tags/v0.1.1.tar.gz',
   keywords = ['CONNECTIVITY', 'TOP-DOWN', 'FEEDBACK'],  
-  install_requires=[           
-          'torch',
-          'pandas',
-          'soundfile',
-          'gzip',
-          'torchaudio',
-          'numpy',
-          'glob',
-          'importlib',
-          'matplotlib',
-          'torchvision',      
-      ],
   classifiers=[
     'Development Status :: 3 - Alpha', 
     'Intended Audience :: Developers',      

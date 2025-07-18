@@ -16,6 +16,20 @@ class ClassifierReadout(nn.Module):
         pred = self.fc2(F.relu(pred))
         return pred
     
+class MultiOutputClassifierReadout(nn.Module):
+    def __init__(self, output1_size, output1_size, n_classes, intermediate_dim=100):
+        super(ClassifierReadout, self).__init__()
+        
+        h1, w1, dim1 = output_size1
+        h2, w2, dim2 = output_size2
+        self.fc1 = nn.Linear(h1*w1*dim1 + h2*w2*dim2 +1, intermediate_dim)
+        self.fc2 = nn.Linear(intermediate_dim, n_classes)
+        
+    def forward(self, x1, x2, align_flag):
+        x = torch.cat([torch.flatten(x1, start_dim=1), torch.flatten(x2, start_dim=1), torch.unsqueeze(align_flag, 1)], start_dim=1)
+        pred = self.fc1(F.relu(x)
+        pred = self.fc2(F.relu(pred))
+        return pred
 
 class ActionReadout(nn.Module):
     def __init__(self, output_size, act_dim, h_dim=100):

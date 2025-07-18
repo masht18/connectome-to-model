@@ -1,0 +1,122 @@
+cuda
+Loading datasets
+96268
+Loading existing ConvGRU model
+Loading existing readout
+Script failed for graph brainlike_thickness with seed 1.
+
+======== GPU REPORT ========
+
+==============NVSMI LOG==============
+
+Timestamp                                 : Mon Dec  2 16:33:20 2024
+Driver Version                            : 560.35.03
+CUDA Version                              : 12.6
+
+Attached GPUs                             : 1
+GPU 00000000:27:00.0
+    Accounting Mode                       : Enabled
+    Accounting Mode Buffer Size           : 4000
+    Accounted Processes
+        Process ID                        : 2684837
+            GPU Utilization               : 22 %
+            Memory Utilization            : 7 %
+            Max memory usage              : 388 MiB
+            Time                          : 54425 ms
+            Is Running                    : 0
+
+Mon Dec  2 16:33:20 2024       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 560.35.03              Driver Version: 560.35.03      CUDA Version: 12.6     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  Quadro RTX 8000                On  |   00000000:27:00.0 Off |                    0 |
+| 59%   69C    P2             83W /  235W |       1MiB /  46080MiB |      3%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+cuda
+Loading datasets
+96268
+Loading existing ConvGRU model
+Loading existing readout
+| epoch   0 | running loss 0.0000 | train accuracy 0.00000 |match accuracy 0.07401 | mismatch accuracy 0.05302 |control image alignment 0.07116 |control audio alignment 0.10071
+Completed for graph brainlike_thickness with seed 1.
+cuda
+Loading datasets
+96268
+Loading existing ConvGRU model
+Loading existing readout
+| epoch   0 | running loss 0.0000 | train accuracy 0.00000 |match accuracy 0.14379 | mismatch accuracy 0.14766 |control image alignment 0.15401 |control audio alignment 0.10154
+Completed for graph brainlike_thickness with seed 2.
+cuda
+Loading datasets
+96268
+Loading existing ConvGRU model
+Loading existing readout
+| epoch   0 | running loss 0.0000 | train accuracy 0.00000 |match accuracy 0.10006 | mismatch accuracy 0.09666 |control image alignment 0.09684 |control audio alignment 0.10605
+Completed for graph brainlike_thickness with seed 3.
+All runs completed successfully.
+
+======== GPU REPORT ========
+
+==============NVSMI LOG==============
+
+Timestamp                                 : Mon Dec  2 17:01:36 2024
+Driver Version                            : 560.35.03
+CUDA Version                              : 12.6
+
+Attached GPUs                             : 1
+GPU 00000000:88:00.0
+    Accounting Mode                       : Enabled
+    Accounting Mode Buffer Size           : 4000
+    Accounted Processes
+        Process ID                        : 1659250
+            GPU Utilization               : 2 %
+            Memory Utilization            : 0 %
+            Max memory usage              : 1260 MiB
+            Time                          : 503851 ms
+            Is Running                    : 0
+        Process ID                        : 1662349
+            GPU Utilization               : 2 %
+            Memory Utilization            : 0 %
+            Max memory usage              : 1260 MiB
+            Time                          : 508827 ms
+            Is Running                    : 0
+        Process ID                        : 1664565
+            GPU Utilization               : 2 %
+            Memory Utilization            : 0 %
+            Max memory usage              : 1260 MiB
+            Time                          : 495577 ms
+            Is Running                    : 0
+
+Mon Dec  2 17:01:36 2024       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 560.35.03              Driver Version: 560.35.03      CUDA Version: 12.6     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  Quadro RTX 8000                On  |   00000000:88:00.0 Off |                    0 |
+| 33%   34C    P2             68W /  260W |       1MiB /  46080MiB |      6%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+

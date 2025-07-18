@@ -1,0 +1,200 @@
+[=== Module anaconda/3 loaded ===]
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 64: export: `/CVMFS/CONFIG.MILA.QUEBEC/ETC/PYTHON.D/3.7=/cvmfs/config.mila.quebec/etc/python.d/3.7': not a valid identifier
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 65: export: `/HOME/MILA/M/MASHBAYAR.TUGSBAYAR/.CONDA/ENVS/CON2MODEL/BIN/PYTHON3.11=/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/bin/python3.11': not a valid identifier
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+[=== Module anaconda/3 loaded ===]
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 64: export: `/CVMFS/CONFIG.MILA.QUEBEC/ETC/PYTHON.D/3.7=/cvmfs/config.mila.quebec/etc/python.d/3.7': not a valid identifier
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 65: export: `/HOME/MILA/M/MASHBAYAR.TUGSBAYAR/.CONDA/ENVS/CON2MODEL/BIN/PYTHON3.11=/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/bin/python3.11': not a valid identifier
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+Traceback (most recent call last):
+  File "/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/amb_audio_training.py", line 216, in <module>
+    match_acc = test_sequence(testloader, align_to=args['align_to'])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/amb_audio_training.py", line 71, in test_sequence
+    y = model(x)
+        ^^^^^^^^
+  File "/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mila/m/mashbayar.tugsbayar/convgru_feedback/connectome_to_model/model/graph.py", line 400, in forward
+    topdown = topdown_projs[-1](torch.cat(topdown, dim=1))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 4 but got size 5 for tensor number 2 in the list.
+[=== Module anaconda/3 loaded ===]
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 64: export: `/CVMFS/CONFIG.MILA.QUEBEC/ETC/PYTHON.D/3.7=/cvmfs/config.mila.quebec/etc/python.d/3.7': not a valid identifier
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 65: export: `/HOME/MILA/M/MASHBAYAR.TUGSBAYAR/.CONDA/ENVS/CON2MODEL/BIN/PYTHON3.11=/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/bin/python3.11': not a valid identifier
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+Traceback (most recent call last):
+  File "/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/amb_audio_training.py", line 216, in <module>
+    match_acc = test_sequence(testloader, align_to=args['align_to'])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/amb_audio_training.py", line 71, in test_sequence
+    y = model(x)
+        ^^^^^^^^
+  File "/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mila/m/mashbayar.tugsbayar/convgru_feedback/connectome_to_model/model/graph.py", line 400, in forward
+    topdown = topdown_projs[-1](torch.cat(topdown, dim=1))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 4 but got size 5 for tensor number 2 in the list.
+/var/spool/slurmd/job5705151/slurm_script: line 39: --reciprocal: command not found
+[=== Module anaconda/3 loaded ===]
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 64: export: `/CVMFS/CONFIG.MILA.QUEBEC/ETC/PYTHON.D/3.7=/cvmfs/config.mila.quebec/etc/python.d/3.7': not a valid identifier
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 65: export: `/HOME/MILA/M/MASHBAYAR.TUGSBAYAR/.CONDA/ENVS/CON2MODEL/BIN/PYTHON3.11=/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/bin/python3.11': not a valid identifier
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/amb_audio_training.py:135: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/amb_audio_training.py:135: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/amb_audio_training.py:135: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+[=== Module anaconda/3 loaded ===]
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 64: export: `/CVMFS/CONFIG.MILA.QUEBEC/ETC/PYTHON.D/3.7=/cvmfs/config.mila.quebec/etc/python.d/3.7': not a valid identifier
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 65: export: `/HOME/MILA/M/MASHBAYAR.TUGSBAYAR/.CONDA/ENVS/CON2MODEL/BIN/PYTHON3.11=/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/bin/python3.11': not a valid identifier
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+[=== Module anaconda/3 loaded ===]
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 64: export: `/CVMFS/CONFIG.MILA.QUEBEC/ETC/PYTHON.D/3.7=/cvmfs/config.mila.quebec/etc/python.d/3.7': not a valid identifier
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 65: export: `/HOME/MILA/M/MASHBAYAR.TUGSBAYAR/.CONDA/ENVS/CON2MODEL/BIN/PYTHON3.11=/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/bin/python3.11': not a valid identifier
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+Traceback (most recent call last):
+  File "/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py", line 247, in <module>
+    with open(args['hstates_save'], "wb") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'saved_models/hstates_avs/brainlike_MPC_hstate_1.pt'
+[=== Module anaconda/3 loaded ===]
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 64: export: `/CVMFS/CONFIG.MILA.QUEBEC/ETC/PYTHON.D/3.7=/cvmfs/config.mila.quebec/etc/python.d/3.7': not a valid identifier
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 65: export: `/HOME/MILA/M/MASHBAYAR.TUGSBAYAR/.CONDA/ENVS/CON2MODEL/BIN/PYTHON3.11=/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/bin/python3.11': not a valid identifier
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+[=== Module anaconda/3 loaded ===]
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 64: export: `/CVMFS/CONFIG.MILA.QUEBEC/ETC/PYTHON.D/3.7=/cvmfs/config.mila.quebec/etc/python.d/3.7': not a valid identifier
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 65: export: `/HOME/MILA/M/MASHBAYAR.TUGSBAYAR/.CONDA/ENVS/CON2MODEL/BIN/PYTHON3.11=/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/bin/python3.11': not a valid identifier
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+Traceback (most recent call last):
+  File "/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py", line 215, in <module>
+    vs1_acc = test_sequence(vs_testloader, align_to='image')
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py", line 73, in test_sequence
+    y = model(x)
+        ^^^^^^^^
+  File "/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mila/m/mashbayar.tugsbayar/convgru_feedback/connectome_to_model/model/graph.py", line 400, in forward
+    topdown = topdown_projs[-1](torch.cat(topdown, dim=1))
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Sizes of tensors must match except in dimension 1. Expected size 4 but got size 5 for tensor number 2 in the list.
+[=== Module anaconda/3 loaded ===]
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 64: export: `/CVMFS/CONFIG.MILA.QUEBEC/ETC/PYTHON.D/3.7=/cvmfs/config.mila.quebec/etc/python.d/3.7': not a valid identifier
+/cvmfs/ai.mila.quebec/apps/arch/distro/anaconda/3/etc/profile.d/conda.sh: line 65: export: `/HOME/MILA/M/MASHBAYAR.TUGSBAYAR/.CONDA/ENVS/CON2MODEL/BIN/PYTHON3.11=/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/bin/python3.11': not a valid identifier
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torch/nn/init.py:412: UserWarning: Initializing zero-element tensors is a no-op
+  warnings.warn("Initializing zero-element tensors is a no-op")
+/home/mila/m/mashbayar.tugsbayar/.conda/envs/con2model/lib/python3.11/site-packages/torchvision/transforms/functional.py:1603: UserWarning: The default value of the antialias parameter of all the resizing transforms (Resize(), RandomResizedCrop(), etc.) will change from None to True in v0.17, in order to be consistent across the PIL and Tensor backends. To suppress this warning, directly pass antialias=True (recommended, future default), antialias=None (current default, which means False for Tensors and True for PIL), or antialias=False (only works on Tensors - PIL will still use antialiasing). This also applies if you are using the inference transforms from the models weights: update the call to weights.transforms(antialias=True).
+  warnings.warn(
+/home/mila/m/mashbayar.tugsbayar/convgru_feedback/scripts/multimodal_all_scenarios.py:138: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  t_transforms = lambda y: torch.tensor(y).to(device)

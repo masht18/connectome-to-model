@@ -16,7 +16,6 @@
 
 ## 🌟 Overview
 
-
 This codebase provides a framework for converting simple connectome data (structured connectivity between brain areas) into functional artificial neural networks with top-down feedback. The resulting models incorporate biologically-inspired feedback mechanisms and can process multiple input streams simultaneously.
 
 

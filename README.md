@@ -19,7 +19,7 @@
 This codebase provides a framework for converting simple connectome data (structured connectivity between brain areas) into functional artificial neural networks with top-down feedback. The resulting models incorporate biologically-inspired feedback mechanisms and can process multiple input streams simultaneously.
 
 
-👉 **See the interactive [MNIST Jupyter tutorial](mnist_graph_training.ipynb) for a hands-on example.**
+👉 **See the interactive [MNIST Jupyter tutorial](mnist_tutorial.ipynb) for a hands-on example.**
 
 
 ## ✨ Key Features
@@ -98,9 +98,24 @@ audio_input = torch.randn(batch_size, seq_len, 1, 64, 64).cuda()
 outputs = model([visual_input, audio_input])
 ```
 
+### No-code training (config-driven)
+
+To train on MNIST without editing any Python, point the trainer at a YAML config:
+
+```bash
+connectome-train --config configs/mnist.yaml
+# or, without installing the console script:
+python -m connectome_to_model.train --config configs/mnist.yaml
+```
+
+Edit `configs/mnist.yaml` to change the connectome (`graph_loc`), input/output areas, and
+hyperparameters. See [`configs/mnist.yaml`](configs/mnist.yaml) for all options.
+
 ## 📊 Connectome File Format
 
-The connectome CSV file defines both connectivity and area properties:
+The connectome CSV file defines both connectivity and area properties. See
+**[docs/connectome_csv_format.md](docs/connectome_csv_format.md)** for the authoritative
+column-by-column spec; a summary follows.
 
 ### Example: Simple A→B→C Architecture
 

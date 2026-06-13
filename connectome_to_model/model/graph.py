@@ -1,9 +1,92 @@
-from connectome_to_model.model.topdown_gru import ConvGRUBasalTopDownCell, ILC_upsampler
 import torch
-from torch import nn
-import torch.nn.functional as F
 import pandas as pd
-import math
+
+# Backwards-compatible alias: the model class was renamed to ConnectomicsConvGRU and
+# moved to architectures.py. Scripts and notebooks still import `Architecture` from here.
+from connectome_to_model.model.architectures import ConnectomicsConvGRU as Architecture
+
+# Per-area parameter columns the CSV must contain (everything after the adjacency block).
+REQUIRED_AREA_COLUMNS = [
+    'hidden_dim', 'input_dim',
+    'input_h', 'input_w',
+    'kernel_h', 'kernel_w',
+    'basal_topdown_dim', 'apical_topdown_dim',
+]
+# Columns that must be strictly positive (a zero-sized area/kernel makes no sense).
+_POSITIVE_COLUMNS = ['hidden_dim', 'input_dim', 'input_h', 'input_w', 'kernel_h', 'kernel_w']
+# Columns that must be non-negative (0 means "no feedback of this type").
+_NONNEGATIVE_COLUMNS = ['basal_topdown_dim', 'apical_topdown_dim']
+
+
+def validate_connectome_csv(graph_df, input_nodes, output_nodes):
+    """
+    Check a loaded connectome dataframe and raise a readable ValueError on the first problem.
+
+    The expected layout is: the first N columns (N = number of rows) form the square
+    area-to-area adjacency matrix, followed by the per-area parameter columns listed in
+    REQUIRED_AREA_COLUMNS. Returns the number of areas (rows) on success.
+    """
+    num_node = graph_df.shape[0]
+    if num_node == 0:
+        raise ValueError("Connectome CSV has no rows; expected one row per brain area.")
+
+    # 1. Required parameter columns are present.
+    missing = [c for c in REQUIRED_AREA_COLUMNS if c not in graph_df.columns]
+    if missing:
+        raise ValueError(
+            f"Connectome CSV is missing required column(s): {', '.join(missing)}. "
+            f"Expected columns after the {num_node}-column adjacency block: "
+            f"{', '.join(REQUIRED_AREA_COLUMNS)}."
+        )
+
+    # 2. There must be at least num_node adjacency columns plus the parameter columns.
+    if graph_df.shape[1] < num_node + len(REQUIRED_AREA_COLUMNS):
+        raise ValueError(
+            f"Connectome CSV has {graph_df.shape[1]} columns but needs at least "
+            f"{num_node + len(REQUIRED_AREA_COLUMNS)} "
+            f"({num_node} adjacency columns for {num_node} areas + "
+            f"{len(REQUIRED_AREA_COLUMNS)} parameter columns)."
+        )
+
+    # 3. The adjacency block (first num_node columns) must not overlap the parameter columns.
+    adjacency_cols = list(graph_df.columns[:num_node])
+    overlap = [c for c in REQUIRED_AREA_COLUMNS if c in adjacency_cols]
+    if overlap:
+        raise ValueError(
+            f"Parameter column(s) {', '.join(overlap)} fall inside the first {num_node} "
+            f"(adjacency) columns. The adjacency block must be exactly the first {num_node} "
+            f"columns, one per area."
+        )
+
+    # 4. Adjacency must be numeric.
+    adjacency = graph_df.iloc[:, :num_node]
+    if not adjacency.apply(lambda col: pd.api.types.is_numeric_dtype(col)).all():
+        raise ValueError(
+            "The adjacency block (first columns) contains non-numeric values; "
+            "connection strengths must be numbers (e.g. 0/1)."
+        )
+
+    # 5. Per-area value sanity, reported with the offending row.
+    for col in _POSITIVE_COLUMNS:
+        bad = graph_df.index[graph_df[col] <= 0].tolist()
+        if bad:
+            raise ValueError(f"Column '{col}' must be > 0, but row(s) {bad} have a value <= 0.")
+    for col in _NONNEGATIVE_COLUMNS:
+        bad = graph_df.index[graph_df[col] < 0].tolist()
+        if bad:
+            raise ValueError(f"Column '{col}' must be >= 0, but row(s) {bad} have a negative value.")
+
+    # 6. input/output node indices are in range.
+    out_list = output_nodes if isinstance(output_nodes, list) else [output_nodes]
+    for label, idxs in (("input_nodes", input_nodes), ("output_nodes", out_list)):
+        for i in idxs:
+            if not (0 <= i < num_node):
+                raise ValueError(
+                    f"{label} contains index {i}, which is out of range for a graph with "
+                    f"{num_node} areas (valid indices 0..{num_node - 1})."
+                )
+
+    return num_node
 
 class Node:
     '''
@@ -77,6 +160,7 @@ class Graph(object):
                  bias=False, reciprocal=True, dtype=None):
         
         graph_df = pd.read_csv(graph_loc)
+        validate_connectome_csv(graph_df, input_nodes, output_nodes)
         self.reciprocal = reciprocal
         self.num_node = graph_df.shape[0]
         self.conn = torch.tensor(graph_df.iloc[:, :self.num_node].values)   # connection_strength_matrix
@@ -120,24 +204,12 @@ class Graph(object):
             
         return nodes
     
-    def rank_node(self, current_node, output_node_index, rank_val, num_pass):
-        ''' ranks each node in the graph'''
-        current_node.rank_list.append(rank_val)
-        rank_val = rank_val + 1
-        for node in current_node.out_nodes_indices:
-            num_pass = num_pass + 1
-            if (current_node == output_node_index and num_pass == self.num_edge):
-                self.max_rank = current_node.rank.max()
-                return
-            else:
-                self.rank_node(self.nodes[node], output_node_index, rank_val, num_pass)
-
     def find_feedforward_cells(self, node):
         return self.nodes[node].in_nodes_indices
 
-    def find_feedback_cells(self, node, t): 
+    def find_feedback_cells(self, node):
         return self.nodes[node].out_nodes_indices
-    
+
     def find_input_sizes(self):
         input_szs = []
         for node in self.nodes:

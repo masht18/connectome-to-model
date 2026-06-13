@@ -1,16 +1,25 @@
 import os
 import torch
 from torch import nn
-from torch.autograd import Variable
 import torch.nn.functional as F
 
+
+def _resolve_device_dtype(device, dtype):
+    """Fall back to CUDA when available, otherwise CPU, so the cells run on either."""
+    if dtype is None:
+        dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
+    if device is None:
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    return device, dtype
+
+
 class ConvGRUBasalTopDownCell(nn.Module):
-    def __init__(self, input_size, input_dim, hidden_dim, kernel_size, 
+    def __init__(self, input_size, input_dim, hidden_dim, kernel_size,
                  basal_topdown_dim=0,
                  apical_topdown_dim=0,
                  bias=True,
-                 device='cuda',
-                 dtype=torch.cuda.FloatTensor):
+                 device=None,
+                 dtype=None):
         """
         Single ConvGRU block with topdown
         :param input_size: (int, int)
@@ -35,10 +44,9 @@ class ConvGRUBasalTopDownCell(nn.Module):
         self.padding = kernel_size[0] // 2, kernel_size[1] // 2
         self.hidden_dim = hidden_dim
         self.bias = bias
-        self.dtype = dtype
         self.apical_topdown_dim = apical_topdown_dim
         self.basal_topdown_dim = basal_topdown_dim
-        self.device = device
+        self.device, self.dtype = _resolve_device_dtype(device, dtype)
 
         # Basal compartment
         if basal_topdown_dim == 0:
@@ -62,7 +70,7 @@ class ConvGRUBasalTopDownCell(nn.Module):
                               bias=self.bias)
 
     def init_hidden(self, batch_size):
-        return (Variable(torch.zeros(batch_size, self.hidden_dim, self.height, self.width)).type(self.dtype))
+        return torch.zeros(batch_size, self.hidden_dim, self.height, self.width).type(self.dtype)
 
     def forward(self, input_tensor, h_cur, topdown):
         """
@@ -76,15 +84,12 @@ class ConvGRUBasalTopDownCell(nn.Module):
         """
         b, in_dim, h, w = input_tensor.shape
         mult_topdown_dim = in_dim + self.hidden_dim + 2*self.apical_topdown_dim
-        if topdown == None:
-            topdown = torch.zeros(b, mult_topdown_dim + self.basal_topdown_dim, h, w, device=self.device)
-        
+        if topdown is None:
+            topdown = torch.zeros(b, mult_topdown_dim + self.basal_topdown_dim, h, w, device=input_tensor.device)
+
         # BASAL COMPARTMENT
         if self.basal_topdown_dim != 0:
-            if topdown == None:
-                basal_topdown = torch.zeros(b, self.basal_topdown_dim, h, w, device=self.device)
-            else:
-                basal_topdown, topdown = torch.split(topdown, (self.basal_topdown_dim, topdown.shape[1]-self.basal_topdown_dim), dim=1)
+            basal_topdown, topdown = torch.split(topdown, (self.basal_topdown_dim, topdown.shape[1]-self.basal_topdown_dim), dim=1)
             combined = torch.cat([input_tensor, h_cur, basal_topdown], dim=1)
         else:
             combined = torch.cat([input_tensor, h_cur], dim=1)
@@ -112,10 +117,11 @@ class ConvGRUBasalTopDownCell(nn.Module):
     
     
 class ConvGRUTopDownCell(nn.Module):
-    def __init__(self, input_size, input_dim, hidden_dim, kernel_size, 
-                 topdown_type='multiplicative', 
-                 bias=True, 
-                 dtype=torch.cuda.FloatTensor):
+    def __init__(self, input_size, input_dim, hidden_dim, kernel_size,
+                 topdown_type='multiplicative',
+                 bias=True,
+                 device=None,
+                 dtype=None):
         """
         Single ConvGRU block with topdown
         :param input_size: (int, int)
@@ -138,7 +144,7 @@ class ConvGRUTopDownCell(nn.Module):
         self.padding = kernel_size[0] // 2, kernel_size[1] // 2
         self.hidden_dim = hidden_dim
         self.bias = bias
-        self.dtype = dtype
+        self.device, self.dtype = _resolve_device_dtype(device, dtype)
         self.topdown_type = topdown_type
 
         if self.topdown_type == 'multiplicative':
@@ -154,9 +160,8 @@ class ConvGRUTopDownCell(nn.Module):
                                         padding= (kernel_size[0] // 2, kernel_size[1] // 2),
                                         bias=self.bias)
         else:
-            raise Warning('Topdown mechanism not implemented')
-            
-        
+            raise ValueError(f"Unknown topdown_type '{topdown_type}'; expected 'multiplicative' or 'composite'")
+
         self.conv_can = nn.Conv2d(in_channels=input_dim+hidden_dim,
                               out_channels=self.hidden_dim, # for candidate neural memory
                               kernel_size=kernel_size,
@@ -164,7 +169,7 @@ class ConvGRUTopDownCell(nn.Module):
                               bias=self.bias)
 
     def init_hidden(self, batch_size):
-        return (Variable(torch.zeros(batch_size, self.hidden_dim, self.height, self.width)).type(self.dtype))
+        return torch.zeros(batch_size, self.hidden_dim, self.height, self.width).type(self.dtype)
 
     def forward(self, input_tensor, h_cur, topdown):
         """
@@ -177,7 +182,7 @@ class ConvGRUTopDownCell(nn.Module):
             topdown signal, either a direct clue or hidden of top layer
         """
         combined = torch.cat([input_tensor, h_cur], dim=1)
-        if topdown == None:
+        if topdown is None:
             topdown = torch.zeros_like(combined)
         if self.topdown_type == 'composite':
             combined = torch.cat([input_tensor, h_cur, topdown], dim=1)

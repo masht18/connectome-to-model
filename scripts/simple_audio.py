@@ -106,12 +106,12 @@ if __name__ == "__main__":
     parser.add_argument('--img_ambiguity', type = str2bool, default = True)
     parser.add_argument('--match', type = str2bool, default = True)
     parser.add_argument('--align_to', type = str, default = 'audio')
-    parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/graphs/ambaudio/multimodal_brainlike_MPC.csv')
+    parser.add_argument('--graph_loc', type = str, default = 'graphs/ambaudio/multimodal_brainlike_MPC.csv')
     parser.add_argument('--connection_decay', type = str, default = 'ones')
     parser.add_argument('--return_bottom_layer', type = str2bool, default = False)
 
-    parser.add_argument('--model_save', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/saved_models/brainlike_doubleamb_MPC2.pt')
-    parser.add_argument('--results_save', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/results/brainlike_doubleamb_MPC2.npy')
+    parser.add_argument('--model_save', type = str, default = 'saved_models/brainlike_doubleamb_MPC2.pt')
+    parser.add_argument('--results_save', type = str, default = 'results/brainlike_doubleamb_MPC2.npy')
 
     args = vars(parser.parse_args())
 

@@ -4,7 +4,8 @@ import random
 import string
 import importlib
 import numpy as np
-import matplotlib.pyplot as plt
+# matplotlib is imported lazily inside the plotting branches below so that a headless
+# install without it can still import this module.
 
 import torch
 # from ambiguous.data_utils import *
@@ -105,6 +106,7 @@ def sequence_gen(imgs, label, clean_data, mnist_ref, seq_style = 'addition', lab
         
         # show the first sequence generated if show=True
         if show==True and batch_idx==0:
+            import matplotlib.pyplot as plt
             fig = plt.figure(figsize=(8, 8))
             columns = 3
             rows = 1
@@ -168,6 +170,7 @@ def choice_sequence_gen(imgs, label, clean_data, mnist_ref, full_ambiguity = Tru
         
         # show the first sequence generated if show=True
         if show==True and batch_idx==0:
+            import matplotlib.pyplot as plt
             fig = plt.figure(figsize=(8, 8))
             columns = 2
             rows = 1

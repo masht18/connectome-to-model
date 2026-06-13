@@ -119,11 +119,11 @@ if __name__ == "__main__":
     parser.add_argument('--img_ambiguity', type = str2bool, default = True)
     parser.add_argument('--match', type = str2bool, default = True)
     parser.add_argument('--reciprocal', type = str2bool, default = True)
-    parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/graphs/4_task_models/multimodal_brainlike.csv')
+    parser.add_argument('--graph_loc', type = str, default = 'graphs/4_task_models/multimodal_brainlike.csv')
     parser.add_argument('--return_bottom_layer', type = str2bool, default = False)
 
-    parser.add_argument('--model_save', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/test.pt')
-    parser.add_argument('--results_save', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/tes.npy')
+    parser.add_argument('--model_save', type = str, default = 'test.pt')
+    parser.add_argument('--results_save', type = str, default = 'tes.npy')
     parser.add_argument('--hstates_save', type = str, default = None)
 
     args = vars(parser.parse_args())
@@ -148,12 +148,12 @@ if __name__ == "__main__":
     aun_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/aunv'
     
     uam_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uam'
-    #uam_root = '/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_amb_match'
+    #uam_root = './data/multimodal_amb_match'
     uan_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uan'
-    #uan_root = '/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_amb_mismatch'
+    #uan_root = './data/multimodal_amb_mismatch'
     
     uum_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uum'
-    #uun_root='/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_clean_mismatch'
+    #uun_root='./data/multimodal_clean_mismatch'
     uun_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uun'
 
     # %% [markdown]

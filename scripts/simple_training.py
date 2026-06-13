@@ -88,8 +88,8 @@ if __name__ == "__main__":
     parser.add_argument('--seed', type = int, default = 42)
     parser.add_argument('--reps', type = int, default = 1, help = 'how many times to view input')
     parser.add_argument('--topdown', type = str2bool, default = True)
-    parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/graphs/test/topdown_test_mult_only.csv')
-    parser.add_argument('--data_path', type = str, default = '/home/mila/m/mashbayar.tugsbayar/datasets')
+    parser.add_argument('--graph_loc', type = str, default = 'graphs/sample_graph.csv')
+    parser.add_argument('--data_path', type = str, default = './data')
 
     parser.add_argument('--model_save', type = str, default = 'topdowna.pt')
     parser.add_argument('--results_save', type = str, default = 'topdown_only_noupsampling_mult.npy')
@@ -107,8 +107,8 @@ if __name__ == "__main__":
     ## 1: Prepare dataset
     print('Loading datasets')
 
-    transform = T.Compose([T.Resize((32, 32)), T.ToTensor()])
-    MNIST_path='/home/mila/m/mashbayar.tugsbayar/datasets'
+    transform = T.Compose([T.Resize((28, 28)), T.ToTensor()])
+    MNIST_path = args['data_path']
     train_data = datasets.MNIST(root=MNIST_path, download=True, train=True, transform=transform)
     test_data = datasets.MNIST(root=MNIST_path, download=True, train=False, transform=transform)
 
@@ -128,8 +128,8 @@ if __name__ == "__main__":
 
     #-----------------------------------------------------
     ## 3: Initialize neural network
-    model = Architecture(graph, input_sizes, input_dims).cuda().float()
-    readout = ClassifierReadout(model.output_sizes[0], n_classes=10).cuda().float()
+    model = Architecture(graph, input_sizes, input_dims).to(device).float()
+    readout = ClassifierReadout(model.output_sizes[0], n_classes=10).to(device).float()
 
     params = [{'params': model.parameters(), 'lr': 0.001},
               {'params': readout.parameters(), 'lr': 0.001}]

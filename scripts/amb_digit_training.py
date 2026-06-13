@@ -131,13 +131,13 @@ if __name__ == "__main__":
     parser.add_argument('--reps', type = int, default = 1)
     parser.add_argument('--topdown', type = str2bool, default = True)
     parser.add_argument('--topdown_type', type = str, default = 'audio')
-    parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/graphs/test/test_audio.csv')
+    parser.add_argument('--graph_loc', type = str, default = 'graphs/test/test_audio.csv')
     parser.add_argument('--connection_decay', type = str, default = 'ones')
     parser.add_argument('--return_bottom_layer', type = str2bool, default = False)
 
-    parser.add_argument('--model_save', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/test.pt')
-    parser.add_argument('--results_save', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/test.npy')
-    parser.add_argument('--readout_save', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/test.npy')
+    parser.add_argument('--model_save', type = str, default = 'test.pt')
+    parser.add_argument('--results_save', type = str, default = 'test.npy')
+    parser.add_argument('--readout_save', type = str, default = 'test.npy')
     parser.add_argument('--hstates_save', type = str, default = None)
 
     args = vars(parser.parse_args())
@@ -154,9 +154,9 @@ if __name__ == "__main__":
     # # 1: Prepare dataset
     print('Loading datasets')
 
-    amb_match_root='/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_amb_match'
-    clean_mismatch_root='/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_clean_mismatch'
-    amb_mismatch_root='/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_amb_mismatch'
+    amb_match_root='./data/multimodal_amb_match'
+    clean_mismatch_root='./data/multimodal_clean_mismatch'
+    amb_mismatch_root='./data/multimodal_amb_mismatch'
     
     #amb_match_root='/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/aum'
     #clean_mismatch_root='/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uun'

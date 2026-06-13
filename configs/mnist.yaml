@@ -1,0 +1,31 @@
+# Example config for the config-driven trainer.
+# Run with:  connectome-train --config configs/mnist.yaml
+#        or:  python -m connectome_to_model.train --config configs/mnist.yaml
+
+# --- Connectome ---
+graph_loc: graphs/sample_graph.csv  # path to your connectome CSV
+input_nodes: [0]      # which area(s) receive the stimulus
+output_nodes: [2]     # which area to read the classification from
+
+# --- Dataset ---
+dataset: mnist        # only 'mnist' is wired up today
+data_path: ./data     # MNIST is downloaded here if missing
+image_size: 28        # images are resized to image_size x image_size (matches sample_graph areas)
+
+# --- Model ---
+topdown: true
+dropout: true
+dropout_p: 0.25
+proj_hidden_dim: 32
+n_classes: 10
+
+# --- Training ---
+epochs: 10
+batch_size: 32
+lr: 0.001
+seed: 42
+num_workers: 4
+
+# --- Optional outputs (omit or set to null to skip saving) ---
+model_save: null      # e.g. saved_models/mnist.pt
+results_save: null    # e.g. results/mnist.pkl

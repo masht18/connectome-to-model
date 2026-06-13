@@ -29,7 +29,7 @@ def str2bool(v):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--graph_loc', type = str, default = '/home/mila/m/mashbayar.tugsbayar/convgru_feedback/graphs/ambaudio/multimodal_brainlike_MPC.csv')
+    parser.add_argument('--graph_loc', type = str, default = 'graphs/ambaudio/multimodal_brainlike_MPC.csv')
     parser.add_argument('--save_hstates', type = str, default = 'dim_red/saved_hstates/dim_red_tsne_big_rnn_mismatch.npy')
     parser.add_argument('--reciprocal', type = str2bool, default = True)
     parser.add_argument('--align_to', type = str, default = 'image')
@@ -102,10 +102,10 @@ aan_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlik
 aum_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/aum'
 aun_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/aunv'
 uam_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uam'
-#uam_root = '/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_amb_match'
+#uam_root = './data/multimodal_amb_match'
 uan_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uan'
 uun_root = '/network/scratch/m/mashbayar.tugsbayar/datasets/audiovisual_brainlike/uun'
-#uun_root='/home/mila/m/mashbayar.tugsbayar/datasets/multimodal_clean_mismatch'
+#uun_root='./data/multimodal_clean_mismatch'
 t_transforms = lambda y: torch.tensor(y).to('cuda')
 
 vs_testset = AudioVisualDataset(None, None, uam_root, split='test', transforms=T.Resize((32,32)))

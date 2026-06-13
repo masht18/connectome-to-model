@@ -1,15 +1,16 @@
-from connectome_to_model.model.topdown_gru import ConvGRUBasalTopDownCell, ILC_upsampler
+from connectome_to_model.model.topdown_gru import ConvGRUBasalTopDownCell
 import torch
 from torch import nn
 import torch.nn.functional as F
-import pandas as pd
 import math
 
 class ConnectomicsConvGRU(nn.Module):
     def __init__(self, graph, input_sizes, input_dims,
                  topdown=True,
                  dropout=True, dropout_p=0.25,
-                 proj_hidden_dim=32):
+                 proj_hidden_dim=32,
+                 layer_norm=False,
+                 return_all=False):
         '''
         :param graph (Graph object)
         
@@ -27,7 +28,10 @@ class ConnectomicsConvGRU(nn.Module):
             dropout probability if dropout is enabled
         :param proj_hidden_dim (int)
             hyperparam. intermediate dimension of projection convolutions
-            
+        :param layer_norm (bool)
+            if enabled, applies layer normalization to hidden states
+        :param return_all (bool)
+            if enabled, forward() returns all hidden states as a list instead of only output nodes
         '''
         super(ConnectomicsConvGRU, self).__init__()
         
@@ -39,12 +43,15 @@ class ConnectomicsConvGRU(nn.Module):
         self.dropout = nn.Dropout(dropout_p)
         self.topdown = topdown
         self.proj_hidden_dim = proj_hidden_dim
+        self.use_layer_norm = layer_norm
+        self.return_all = return_all
         
         self.bottomup_projections = nn.ModuleDict()
         self.topdown_projections = nn.ModuleDict()
         
         # The "brain areas" of the model
         cell_list = []
+        layer_norm_list = []
         for node in range(graph.num_node):
             cell_list.append(ConvGRUBasalTopDownCell(input_size=((graph.nodes[node].input_size[0], graph.nodes[node].input_size[1])), 
                                          input_dim=graph.nodes[node].input_dim, 
@@ -54,7 +61,17 @@ class ConnectomicsConvGRU(nn.Module):
                                         apical_topdown_dim = graph.nodes[node].apical_topdown_dim,
                                          bias=graph.bias,
                                          dtype=graph.dtype))
+            
+            # Add layer normalization for each node if enabled
+            if self.use_layer_norm:
+                layer_norm_list.append(nn.LayerNorm([int(graph.nodes[node].hidden_dim), 
+                                                   graph.nodes[node].input_size[0], 
+                                                   graph.nodes[node].input_size[1]]))
+            else:
+                layer_norm_list.append(None)
+        
         self.cell_list = nn.ModuleList(cell_list)
+        self.layer_norm_list = nn.ModuleList(layer_norm_list)
         
         # Store output sizes for readout
         self.output_sizes = []
@@ -152,7 +169,7 @@ class ConnectomicsConvGRU(nn.Module):
             
             self.topdown_projections[node_key] = node_projections
 
-    def _compute_bottomup_input(self, node, t, seq_len, all_inputs, hidden_states_prev):
+    def _compute_bottomup_input(self, node, t, all_inputs, hidden_states_prev):
         """Compute bottom-up input for a specific node at time t"""
         node_key = f"node_{node}"
         if node_key not in self.bottomup_projections:
@@ -164,6 +181,7 @@ class ConnectomicsConvGRU(nn.Module):
         # Handle direct external input
         if node in self.graph.input_indices and 'input' in node_projs:
             inp = all_inputs[self.graph.input_indices.index(node)]
+            _, seq_len, _, _, _ = inp.shape
             
             if t < seq_len:
                 # Active input
@@ -182,6 +200,9 @@ class ConnectomicsConvGRU(nn.Module):
             return None
         
         # Concatenate and integrate all bottom-up inputs
+        #print(node)
+        #for i in range(len(all_inputs)):
+        #    print(all_inputs[i].shape)
         bottomup = torch.cat(bottomup, dim=1)
         if 'integrator' in node_projs:
             bottomup = node_projs['integrator'](bottomup)
@@ -208,16 +229,33 @@ class ConnectomicsConvGRU(nn.Module):
         node_projs = self.topdown_projections[node_key]
         topdown = []
         
+        # Get the target spatial size from the current node's previous state
+        target_h, target_w = hidden_states_prev[node].shape[-2:]
+        
         for idx, topdown_node in enumerate(self.graph.nodes[node].fb_nodes):
             feedback_key = f'feedback_{idx}'
             if feedback_key in node_projs:
-                topdown.append(node_projs[feedback_key](hidden_states_prev[topdown_node]))
+                # 1. Project (Upsample/Downsample)
+                feat = node_projs[feedback_key](hidden_states_prev[topdown_node])
+                
+                # 2. [FIX] Force spatial alignment if sizes don't match exactly
+                if feat.shape[-2:] != (target_h, target_w):
+                    feat = F.interpolate(
+                        feat, 
+                        size=(target_h, target_w), 
+                        mode='bilinear', 
+                        align_corners=False
+                    )
+                
+                topdown.append(feat)
         
         if not topdown:
             return None
         
         # Concatenate and integrate all top-down inputs
+        # Now this will not crash because all feats are guaranteed to be (target_h, target_w)
         topdown = torch.cat(topdown, dim=1)
+        
         if 'integrator' in node_projs:
             topdown = node_projs['integrator'](topdown)
         
@@ -243,7 +281,7 @@ class ConnectomicsConvGRU(nn.Module):
         
         return active_nodes
 
-    def forward(self, all_inputs, batch=True, process_time=None, return_all=False):
+    def forward(self, all_inputs, batch=True, process_time=None):
         """
         :param all_inputs 
                list of tensor of size n, each consisting a input_tensor: (b, t, c, h, w). 
@@ -280,7 +318,7 @@ class ConnectomicsConvGRU(nn.Module):
             for node in active_nodes:
                 
                 # Compute bottom-up input using previous states
-                bottomup = self._compute_bottomup_input(node, t, seq_len, all_inputs, prev_states)
+                bottomup = self._compute_bottomup_input(node, t, all_inputs, prev_states)
                 if bottomup is None:
                     continue
                 
@@ -289,6 +327,10 @@ class ConnectomicsConvGRU(nn.Module):
                 
                 # Process through the cell, reading from current_states[node] and writing to current_states[node]
                 h = self.cell_list[node](bottomup, current_states[node], topdown)
+                
+                # Apply layer normalization if enabled
+                if self.use_layer_norm and self.layer_norm_list[node] is not None:
+                    h = self.layer_norm_list[node](h)
                 
                 # Apply dropout if enabled
                 if self.use_dropout:
@@ -303,7 +345,7 @@ class ConnectomicsConvGRU(nn.Module):
         # Return final states from the last used buffer
         final_states = hidden_states_A if (process_time - 1) % 2 == 0 else hidden_states_B
         
-        if return_all:
+        if self.return_all:
             return final_states
         
         if len(self.graph.output_indices) == 1:

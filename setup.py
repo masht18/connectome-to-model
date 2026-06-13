@@ -25,6 +25,7 @@ def read_requirements():
         'pandas>=1.3.0',
         'matplotlib>=3.3.0',
         'scipy>=1.7.0',
+        'pyyaml>=5.4',
         'tqdm>=4.60.0',
     ]
 
@@ -78,7 +79,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            # Add any command-line scripts here if needed
+            'connectome-train=connectome_to_model.train:main',
         ],
     },
     keywords='connectome, neural networks, neuroscience, machine learning, pytorch, top-down feedback, brain-inspired AI',
